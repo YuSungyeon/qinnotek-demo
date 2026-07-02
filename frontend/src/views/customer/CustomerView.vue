@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { customerApi } from '../../api/customer'
 import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
 
@@ -10,19 +10,28 @@ const submitting = ref(false)
 const error = ref('')
 const submitHint = ref('')
 
+// 전송 전까지 로컬에 보관하는 선택 파일 (itemId -> File)
+const selectedFiles = reactive({})
+
 const items = computed(() => status.value?.items ?? [])
-const allUploaded = computed(
-  () => items.value.length > 0 && items.value.every((i) => i.hasPhoto)
+const selectedCount = computed(() => items.value.filter((i) => selectedFiles[i.itemId]).length)
+const allSelected = computed(
+  () => items.value.length > 0 && items.value.every((i) => selectedFiles[i.itemId])
 )
 const showUploadUI = computed(
   () => status.value && ['INITIAL', 'RETURNED'].includes(status.value.state)
 )
+
+function clearSelected() {
+  Object.keys(selectedFiles).forEach((k) => delete selectedFiles[k])
+}
 
 async function lookup() {
   if (!phone.value.trim()) return
   error.value = ''
   loading.value = true
   status.value = null
+  clearSelected()
   try {
     status.value = await customerApi.lookup(phone.value.trim())
   } catch (err) {
@@ -36,21 +45,21 @@ function reset() {
   status.value = null
   error.value = ''
   submitHint.value = ''
+  clearSelected()
 }
 
-function onUploaded(updated) {
-  const idx = items.value.findIndex((i) => i.itemId === updated.itemId)
-  if (idx !== -1) items.value[idx] = updated
+function onSelect({ itemId, file }) {
+  selectedFiles[itemId] = file
   submitHint.value = ''
 }
 
 async function submit() {
   submitHint.value = ''
-  if (!allUploaded.value) {
-    // 미업로드 항목으로 스크롤 + 안내
-    const missing = items.value.find((i) => !i.hasPhoto)
+  if (!allSelected.value) {
+    // 미선택 항목으로 스크롤 + 안내
+    const missing = items.value.find((i) => !selectedFiles[i.itemId])
     if (missing) {
-      submitHint.value = `'${missing.name}' 사진을 업로드해주세요.`
+      submitHint.value = `'${missing.name}' 사진을 선택해주세요.`
       const el = document.querySelector(`[data-item-id="${missing.itemId}"]`)
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
@@ -59,7 +68,12 @@ async function submit() {
   submitting.value = true
   error.value = ''
   try {
+    // 전송 시 한 번에 업로드 → 제출
+    await Promise.all(
+      items.value.map((i) => customerApi.uploadPhoto(i.itemId, selectedFiles[i.itemId]))
+    )
     status.value = await customerApi.submit(status.value.companyId)
+    clearSelected()
   } catch (err) {
     error.value = err.message
   } finally {
@@ -127,7 +141,7 @@ async function submit() {
             v-for="item in items"
             :key="item.itemId"
             :item="item"
-            @uploaded="onUploaded"
+            @select="onSelect"
           />
         </div>
 
@@ -136,12 +150,12 @@ async function submit() {
 
         <button
           class="btn btn-lg btn-block submit-btn"
-          :class="{ 'btn-success': allUploaded }"
+          :class="{ 'btn-success': allSelected }"
           :disabled="submitting"
           @click="submit"
         >
           <span v-if="submitting" class="spinner"></span>
-          <span v-else>전송 ({{ items.filter((i) => i.hasPhoto).length }}/{{ items.length }})</span>
+          <span v-else>전송 ({{ selectedCount }}/{{ items.length }})</span>
         </button>
       </template>
     </template>

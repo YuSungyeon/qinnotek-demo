@@ -1,16 +1,15 @@
 <script setup>
-import { ref } from 'vue'
-import { customerApi } from '../api/customer'
+import { ref, onBeforeUnmount } from 'vue'
 import { fileUrl } from '../api/client'
 
 const props = defineProps({
   item: { type: Object, required: true }
 })
-const emit = defineEmits(['uploaded'])
+const emit = defineEmits(['select'])
 
 const cameraInput = ref(null)
 const galleryInput = ref(null)
-const uploading = ref(false)
+const previewUrl = ref('')
 const error = ref('')
 
 function pickCamera() {
@@ -20,29 +19,32 @@ function pickGallery() {
   galleryInput.value?.click()
 }
 
-async function onFileChange(e) {
+function onFileChange(e) {
   const file = e.target.files?.[0]
   e.target.value = '' // 같은 파일 재선택 허용
   if (!file) return
-  error.value = ''
-  uploading.value = true
-  try {
-    const updated = await customerApi.uploadPhoto(props.item.itemId, file)
-    emit('uploaded', updated)
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    uploading.value = false
+  if (!file.type.startsWith('image/')) {
+    error.value = '이미지 파일만 선택할 수 있습니다.'
+    return
   }
+  error.value = ''
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  previewUrl.value = URL.createObjectURL(file)
+  // 즉시 업로드하지 않고 선택된 파일만 부모로 전달 (전송 시 일괄 업로드)
+  emit('select', { itemId: props.item.itemId, file })
 }
+
+onBeforeUnmount(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+})
 </script>
 
 <template>
   <div class="photo-card" :class="{ returned: item.status === 'RETURNED' }" :data-item-id="item.itemId">
     <div class="head">
       <span class="name">{{ item.name }}</span>
-      <span v-if="item.hasPhoto" class="done-chip">✓ 업로드됨</span>
-      <span v-else class="todo-chip">미업로드</span>
+      <span v-if="previewUrl" class="done-chip">✓ 선택됨</span>
+      <span v-else class="todo-chip">미선택</span>
     </div>
 
     <p v-if="item.description" class="desc">{{ item.description }}</p>
@@ -52,23 +54,23 @@ async function onFileChange(e) {
       <span>{{ item.rejectReason }}</span>
     </div>
 
+    <!-- 예시 사진(위) → 내 사진(아래) 세로 배치 -->
     <div class="images">
       <div v-if="item.exampleImageUrl" class="thumb">
         <span class="thumb-label">예시</span>
         <img :src="fileUrl(item.exampleImageUrl)" alt="예시" />
       </div>
-      <div v-if="item.hasPhoto" class="thumb">
+      <div v-if="previewUrl" class="thumb">
         <span class="thumb-label uploaded">내 사진</span>
-        <img :src="fileUrl(item.photoUrl)" alt="업로드한 사진" />
+        <img :src="previewUrl" alt="선택한 사진" />
       </div>
     </div>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 10px">{{ error }}</div>
 
     <div class="actions">
-      <button class="btn btn-ghost btn-sm" :disabled="uploading" @click="pickCamera">📷 카메라 촬영</button>
-      <button class="btn btn-ghost btn-sm" :disabled="uploading" @click="pickGallery">🖼️ 사진첩</button>
-      <span v-if="uploading" class="uploading-text">업로드 중…</span>
+      <button class="btn btn-ghost btn-sm" @click="pickCamera">📷 카메라 촬영</button>
+      <button class="btn btn-ghost btn-sm" @click="pickGallery">🖼️ 사진첩</button>
     </div>
 
     <input
@@ -135,15 +137,16 @@ async function onFileChange(e) {
   color: var(--danger);
   font-size: 18px;
 }
+/* 예시(위) → 내 사진(아래) 세로 배치, 각 이미지는 카드 가로 폭에 맞춤 */
 .images {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 12px;
 }
 .thumb {
   position: relative;
-  flex: 1 1 0;
-  min-width: 0;
+  width: 100%;
 }
 .thumb img {
   width: 100%;
@@ -176,9 +179,5 @@ async function onFileChange(e) {
 .actions .btn-sm {
   font-size: 20px;
   padding: 10px 16px;
-}
-.uploading-text {
-  font-size: 20px;
-  color: var(--primary);
 }
 </style>
