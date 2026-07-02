@@ -76,33 +76,15 @@ npm run dev
 
 ## 배포
 
-### 백엔드 (EC2 + MySQL)
+| 구성 | 주소 | 인프라 |
+| --- | --- | --- |
+| 프론트 | `https://qinnotek.minisub.store` | Vercel (main push 자동배포) |
+| 백엔드 | `https://api.qinnotek.minisub.store` | EC2 nginx(443, HTTPS) → Spring Boot(8080), main push 시 GitHub Actions 자동배포 |
+| DB | EC2 로컬 MySQL | — |
 
-1. MySQL 준비 후 스키마 생성:
-   ```sql
-   CREATE DATABASE photodb CHARACTER SET utf8mb4;
-   ```
-2. 빌드:
-   ```bash
-   cd backend
-   ./gradlew clean bootJar    # build/libs/photo-submission-0.0.1-SNAPSHOT.jar
-   ```
-3. EC2에서 `prod` 프로필로 실행 (환경변수로 DB/업로드 경로/CORS 지정):
-   ```bash
-   DB_HOST=... DB_NAME=photodb DB_USERNAME=... DB_PASSWORD=... \
-   UPLOAD_DIR=/var/app/uploads \
-   CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app \
-   java -jar photo-submission-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
-   ```
-4. 보안그룹에서 8080 포트 오픈(또는 nginx 리버스 프록시 + HTTPS 권장).
-
-### 프론트엔드 (Vercel)
-
-1. Vercel 프로젝트의 Root Directory를 `frontend`로 지정.
-2. 환경변수 `VITE_API_BASE`에 EC2 백엔드 주소 설정 (예: `https://api.example.com`).
-3. Build Command `npm run build`, Output Directory `dist` (기본값). `vercel.json`에 SPA 라우팅 rewrite 포함.
-
-> ⚠️ 백엔드 `CORS_ALLOWED_ORIGINS`에 Vercel 도메인을 반드시 추가해야 합니다.
+- CI/CD: `.github/workflows/deploy-backend.yml` (backend 변경 push → EC2 배포)
+- EC2 세팅 스크립트: `deploy/ec2-setup.sh`(Java·MySQL·systemd), `deploy/nginx-setup.sh`(nginx·HTTPS)
+- **상세 절차·체크리스트는 [DEPLOY.md](DEPLOY.md) 참고**
 
 ## 주요 API
 

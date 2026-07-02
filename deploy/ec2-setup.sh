@@ -18,7 +18,7 @@ ENV_FILE=/etc/photo-submission.env
 DB_NAME=photodb
 DB_USER=photo
 DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -hex 12)}"
-CORS_ORIGIN="${CORS_ORIGIN:-https://your-frontend.vercel.app}"
+CORS_ORIGIN="${CORS_ORIGIN:-https://qinnotek.minisub.store}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> 1) 패키지 설치 (Java 17, MySQL)"
