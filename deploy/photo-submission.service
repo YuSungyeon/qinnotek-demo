@@ -1,0 +1,17 @@
+[Unit]
+Description=Photo Submission Spring Boot App
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/photo-submission
+EnvironmentFile=/etc/photo-submission.env
+ExecStart=/usr/bin/java -jar /opt/photo-submission/app.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

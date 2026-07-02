@@ -1,0 +1,455 @@
+<script setup>
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { adminApi } from '../../api/admin'
+import { fileUrl } from '../../api/client'
+
+const props = defineProps({ id: { type: String, required: true } })
+const router = useRouter()
+
+const company = ref(null)
+const requirements = ref([])
+const submission = ref(null)
+const loading = ref(true)
+const error = ref('')
+
+// 전화번호 편집
+const phoneInput = ref('')
+const savingPhone = ref(false)
+
+// 요구사진 지정
+const selectedReqIds = ref([])
+const savingReq = ref(false)
+const reqMsg = ref('')
+
+// 반환 모달
+const returnTarget = ref(null)
+const returnReason = ref('')
+const returnConfirmed = ref(false)
+const processing = ref(false)
+
+// 이미지 라이트박스
+const lightbox = ref('')
+
+const companyId = computed(() => Number(props.id))
+
+async function loadAll() {
+  loading.value = true
+  error.value = ''
+  try {
+    const [detail, reqs, subs] = await Promise.all([
+      adminApi.getCompany(companyId.value),
+      adminApi.listRequirements(),
+      adminApi.getSubmissions(companyId.value)
+    ])
+    company.value = detail
+    requirements.value = reqs
+    submission.value = subs
+    phoneInput.value = detail.phoneNumber || ''
+    selectedReqIds.value = [...detail.assignedRequirementIds]
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    loading.value = false
+  }
+}
+
+async function savePhone() {
+  savingPhone.value = true
+  error.value = ''
+  try {
+    company.value = await adminApi.updatePhone(companyId.value, phoneInput.value.trim())
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    savingPhone.value = false
+  }
+}
+
+function toggleReq(reqId) {
+  const i = selectedReqIds.value.indexOf(reqId)
+  if (i === -1) selectedReqIds.value.push(reqId)
+  else selectedReqIds.value.splice(i, 1)
+}
+
+async function saveRequirements() {
+  savingReq.value = true
+  reqMsg.value = ''
+  error.value = ''
+  try {
+    company.value = await adminApi.assignRequirements(companyId.value, selectedReqIds.value)
+    submission.value = await adminApi.getSubmissions(companyId.value)
+    reqMsg.value = '저장되었습니다.'
+    setTimeout(() => (reqMsg.value = ''), 2000)
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    savingReq.value = false
+  }
+}
+
+async function approve(item) {
+  processing.value = true
+  try {
+    await adminApi.approve(item.itemId)
+    await refreshSubmissions()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    processing.value = false
+  }
+}
+
+function openReturn(item) {
+  returnTarget.value = item
+  returnReason.value = ''
+  returnConfirmed.value = false
+}
+function closeReturn() {
+  returnTarget.value = null
+}
+async function confirmReturn() {
+  if (!returnReason.value.trim()) return
+  processing.value = true
+  try {
+    await adminApi.markReturned(returnTarget.value.itemId, returnReason.value.trim())
+    closeReturn()
+    await refreshSubmissions()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    processing.value = false
+  }
+}
+
+async function refreshSubmissions() {
+  submission.value = await adminApi.getSubmissions(companyId.value)
+  company.value = await adminApi.getCompany(companyId.value)
+}
+
+const statusOf = (s) => ({ PENDING: '미제출', SUBMITTED: '검수 대기', APPROVED: '통과', RETURNED: '반환' }[s] || s)
+const statusColor = (s) =>
+  ({ PENDING: '#6b7280', SUBMITTED: '#2563eb', APPROVED: '#16a34a', RETURNED: '#dc2626' }[s] || '#6b7280')
+
+onMounted(loadAll)
+</script>
+
+<template>
+  <div v-if="loading" class="muted">불러오는 중…</div>
+  <div v-else-if="company">
+    <button class="btn btn-ghost btn-sm back" @click="router.push('/admin/companies')">← 목록</button>
+
+    <div class="page-head">
+      <h1>{{ company.name }}</h1>
+      <span class="badge" :style="{ background: company.statusColor }">{{ company.statusLabel }}</span>
+    </div>
+
+    <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
+
+    <div class="grid">
+      <!-- 전화번호 -->
+      <section class="card">
+        <h2 class="ctitle">전화번호</h2>
+        <p class="muted small">기업당 1개만 등록 가능합니다.</p>
+        <div class="row">
+          <input v-model="phoneInput" class="input" placeholder="전화번호 입력" />
+          <button class="btn" :disabled="savingPhone" @click="savePhone">저장</button>
+        </div>
+      </section>
+
+      <!-- 요구사진 지정 -->
+      <section class="card">
+        <h2 class="ctitle">필요 사진 지정</h2>
+        <p class="muted small">이 기업이 제출할 사진 항목을 선택하세요.</p>
+        <div v-if="requirements.length === 0" class="muted">
+          등록된 요구 사진이 없습니다.
+          <RouterLink to="/admin/requirements" class="link">요구 사진 관리 →</RouterLink>
+        </div>
+        <div v-else class="req-list">
+          <label v-for="r in requirements" :key="r.id" class="req-item">
+            <input
+              type="checkbox"
+              :checked="selectedReqIds.includes(r.id)"
+              @change="toggleReq(r.id)"
+            />
+            <span>{{ r.name }}</span>
+          </label>
+        </div>
+        <div class="save-row">
+          <button class="btn" :disabled="savingReq" @click="saveRequirements">지정 저장</button>
+          <span v-if="reqMsg" class="ok-msg">{{ reqMsg }}</span>
+        </div>
+      </section>
+    </div>
+
+    <!-- 제출 사진 검수 -->
+    <section class="card submissions">
+      <div class="sub-head">
+        <h2 class="ctitle">제출 사진 검수</h2>
+        <span v-if="submission?.latestSubmittedAt" class="muted small">
+          최근 제출: {{ new Date(submission.latestSubmittedAt).toLocaleString('ko-KR') }}
+        </span>
+      </div>
+
+      <div v-if="!submission || submission.items.length === 0" class="muted">
+        지정된 제출 항목이 없습니다.
+      </div>
+
+      <div v-else class="item-grid">
+        <div v-for="item in submission.items" :key="item.itemId" class="sub-item">
+          <div class="sub-item-head">
+            <span class="disp">{{ item.displayName }}</span>
+            <span class="badge" :style="{ background: statusColor(item.status) }">{{ statusOf(item.status) }}</span>
+          </div>
+
+          <div class="photo-box" @click="item.photoUrl && (lightbox = fileUrl(item.photoUrl))">
+            <img v-if="item.photoUrl" :src="fileUrl(item.photoUrl)" alt="제출 사진" />
+            <div v-else class="no-photo">사진 없음</div>
+          </div>
+
+          <div v-if="item.status === 'RETURNED' && item.rejectReason" class="reject-reason">
+            반환 사유: {{ item.rejectReason }}
+          </div>
+
+          <div class="sub-actions" v-if="item.status === 'SUBMITTED'">
+            <button class="btn btn-success btn-sm" :disabled="processing" @click="approve(item)">통과</button>
+            <button class="btn btn-danger btn-sm" :disabled="processing" @click="openReturn(item)">반환</button>
+          </div>
+          <div v-else class="sub-actions muted small">
+            {{ item.status === 'APPROVED' ? '승인 완료' : item.status === 'RETURNED' ? '고객 재제출 대기' : '고객 제출 대기' }}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 반환 모달 -->
+    <div v-if="returnTarget" class="modal-mask" @click.self="closeReturn">
+      <div class="modal">
+        <h3>사진 반환</h3>
+        <p class="disp-name">{{ returnTarget.displayName }}</p>
+        <label class="label">반환 사유 (필수)</label>
+        <textarea
+          v-model="returnReason"
+          class="input"
+          rows="3"
+          placeholder="예: 사진이 너무 어둡습니다."
+        ></textarea>
+        <div class="warn">⚠ 반환 시 기존 사진은 삭제되며 고객은 다시 촬영해야 합니다.</div>
+        <label class="confirm-check">
+          <input v-model="returnConfirmed" type="checkbox" />
+          <span>위 내용을 확인했습니다.</span>
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="closeReturn">취소</button>
+          <button
+            class="btn btn-danger"
+            :disabled="!returnReason.trim() || !returnConfirmed || processing"
+            @click="confirmReturn"
+          >
+            반환하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 이미지 라이트박스 -->
+    <div v-if="lightbox" class="modal-mask" @click="lightbox = ''">
+      <img :src="lightbox" class="lightbox-img" alt="확대 이미지" />
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.back {
+  margin-bottom: 12px;
+}
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.page-head h1 {
+  font-size: 22px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+.ctitle {
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.small {
+  font-size: 13px;
+}
+.muted.small {
+  margin: 0 0 12px;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.req-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+.req-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.req-item input {
+  width: 18px;
+  height: 18px;
+}
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ok-msg {
+  color: var(--success);
+  font-size: 14px;
+  font-weight: 600;
+}
+.link {
+  color: var(--primary);
+  font-weight: 600;
+}
+.submissions {
+  margin-top: 4px;
+}
+.sub-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.sub-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.sub-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.disp {
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-box {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #f3f4f6;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.photo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.no-photo {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: default;
+}
+.reject-reason {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+.sub-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.modal {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 22px;
+  width: 100%;
+  max-width: 420px;
+}
+.modal h3 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.disp-name {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0 0 14px;
+}
+.modal textarea {
+  resize: vertical;
+}
+.warn {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--warning);
+}
+.confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+}
+</style>

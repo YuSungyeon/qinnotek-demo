@@ -1,0 +1,31 @@
+### Gradle ###
+.gradle/
+build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### VS Code ###
+.vscode/
+
+### Uploaded files (로컬 저장) ###
+uploads/
+
+### OS ###
+.DS_Store
+
+### Stale Maven output ###
+target/
