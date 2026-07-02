@@ -37,6 +37,7 @@ app:
     enabled: ${SMS_ENABLED:false}
     api-key: ${SOLAPI_API_KEY:}
     api-secret: ${SOLAPI_API_SECRET:}
+    sender-number: ${SOLAPI_SENDER:}
 
 springdoc:
   swagger-ui:

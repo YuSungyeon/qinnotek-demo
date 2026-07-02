@@ -39,14 +39,17 @@ public class SmsService {
             return;
         }
 
+        // 발신번호: SOLAPI_SENDER 설정이 있으면 사용, 없으면 관리자 번호
+        String from = isBlank(sms.getSenderNumber()) ? adminPhone : sms.getSenderNumber();
+
         // SMS 한글 45자 이내
-        String text = companyName + "이(가) 사진을 등록했습니다. 검토 바랍니다.";
+        String text = companyName + "에서 사진을 등록했습니다. 검토 바랍니다.";
 
         try {
             DefaultMessageService messageService =
                     SolapiClient.INSTANCE.createInstance(sms.getApiKey(), sms.getApiSecret());
             Message message = new Message();
-            message.setFrom(adminPhone);
+            message.setFrom(from);
             message.setTo(adminPhone);
             message.setText(text);
 

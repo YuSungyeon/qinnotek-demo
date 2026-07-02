@@ -48,10 +48,34 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # SMS 설정을 원격 스크립트로 전달 (Secret/Variable → 서버 env 파일에 주입)
+          envs: SMS_ENABLED,SOLAPI_API_KEY,SOLAPI_API_SECRET,SOLAPI_SENDER
           script: |
             set -e
             sudo mv /home/ubuntu/app.jar /opt/photo-submission/app.jar
+
+            # /etc/photo-submission.env 에 SMS 관련 키 upsert (설정된 값이 있을 때만)
+            ENV_FILE=/etc/photo-submission.env
+            upsert() {
+              local key="$1" val="$2"
+              [ -z "$val" ] && return 0
+              if sudo grep -q "^${key}=" "$ENV_FILE"; then
+                sudo sed -i "s|^${key}=.*|${key}=${val}|" "$ENV_FILE"
+              else
+                echo "${key}=${val}" | sudo tee -a "$ENV_FILE" >/dev/null
+              fi
+            }
+            upsert SMS_ENABLED "$SMS_ENABLED"
+            upsert SOLAPI_API_KEY "$SOLAPI_API_KEY"
+            upsert SOLAPI_API_SECRET "$SOLAPI_API_SECRET"
+            upsert SOLAPI_SENDER "$SOLAPI_SENDER"
+
             sudo systemctl restart photo-submission
             sleep 5
             sudo systemctl is-active photo-submission
             echo "배포 완료: $(date)"
+        env:
+          SMS_ENABLED: ${{ vars.SMS_ENABLED }}
+          SOLAPI_API_KEY: ${{ secrets.SOLAPI_API_KEY }}
+          SOLAPI_API_SECRET: ${{ secrets.SOLAPI_API_SECRET }}
+          SOLAPI_SENDER: ${{ vars.SOLAPI_SENDER }}

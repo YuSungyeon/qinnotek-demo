@@ -41,5 +41,7 @@ public class AppProperties {
         private String apiKey = "";
         /** Solapi API Secret */
         private String apiSecret = "";
+        /** 발신번호(Solapi 사전 등록 번호). 비어있으면 관리자 번호를 발신번호로 사용 */
+        private String senderNumber = "";
     }
 }
