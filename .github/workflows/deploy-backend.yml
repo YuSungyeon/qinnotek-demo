@@ -9,7 +9,8 @@ on:
   workflow_dispatch: {} # 수동 실행 허용
 
 env:
-  EC2_HOST: 51.20.74.46
+  # 저장소 Variable(EC2_HOST)에 Elastic IP를 넣으면 IP 변경 시 코드 수정 불필요
+  EC2_HOST: ${{ vars.EC2_HOST }}
   EC2_USER: ubuntu
 
 jobs:
