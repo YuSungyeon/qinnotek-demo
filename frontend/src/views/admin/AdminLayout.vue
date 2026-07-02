@@ -6,8 +6,8 @@ import { RouterLink, RouterView } from 'vue-router'
   <div class="admin">
     <aside class="sidebar">
       <div class="brand">
-        <span class="logo">📸</span>
-        <span>사진 검수 관리자</span>
+        <span class="logo"></span>
+        <span>관리자</span>
       </div>
       <nav>
         <RouterLink to="/admin/companies" class="nav-item">기업 관리</RouterLink>

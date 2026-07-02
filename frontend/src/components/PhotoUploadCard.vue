@@ -102,22 +102,22 @@ async function onFileChange(e) {
   margin-bottom: 6px;
 }
 .name {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 700;
 }
 .done-chip {
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--success);
 }
 .todo-chip {
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-muted);
 }
 .desc {
   margin: 0 0 10px;
-  font-size: 14px;
+  font-size: 21px;
   color: var(--text-muted);
 }
 .reject {
@@ -129,11 +129,11 @@ async function onFileChange(e) {
   border-radius: 8px;
   padding: 10px 12px;
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: 21px;
 }
 .reject strong {
   color: var(--danger);
-  font-size: 12px;
+  font-size: 18px;
 }
 .images {
   display: flex;
@@ -142,25 +142,26 @@ async function onFileChange(e) {
 }
 .thumb {
   position: relative;
-  flex: 0 0 auto;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .thumb img {
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--border);
   display: block;
 }
 .thumb-label {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  font-size: 10px;
+  top: 6px;
+  left: 6px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   background: rgba(0, 0, 0, 0.55);
-  padding: 1px 6px;
+  padding: 2px 9px;
   border-radius: 999px;
 }
 .thumb-label.uploaded {
@@ -172,8 +173,12 @@ async function onFileChange(e) {
   gap: 8px;
   flex-wrap: wrap;
 }
+.actions .btn-sm {
+  font-size: 20px;
+  padding: 10px 16px;
+}
 .uploading-text {
-  font-size: 13px;
+  font-size: 20px;
   color: var(--primary);
 }
 </style>

@@ -73,4 +73,62 @@ public class AdminSubmissionService {
         return submissionItemRepository.findById(itemId)
                 .orElseThrow(() -> BusinessException.notFound("제출 항목을 찾을 수 없습니다."));
     }
+
+    /** ZIP 다운로드 결과 (파일명 + 바이트) */
+    public record ZipResult(String fileName, byte[] data) {
+    }
+
+    /**
+     * 통과(APPROVED)된 사진들을 하나의 ZIP으로 묶는다. 파일명은 기업명_사진명 형태.
+     */
+    public ZipResult zipApprovedPhotos(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> BusinessException.notFound("기업을 찾을 수 없습니다."));
+        List<SubmissionItem> approved = submissionItemRepository.findByCompanyIdWithRequirement(companyId).stream()
+                .filter(i -> i.getStatus() == com.qinnotek.photo.domain.SubmissionStatus.APPROVED && i.hasPhoto())
+                .toList();
+        if (approved.isEmpty()) {
+            throw BusinessException.badRequest("다운로드할 완료(통과) 사진이 없습니다.");
+        }
+
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        java.util.Set<String> usedNames = new java.util.HashSet<>();
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(baos)) {
+            for (SubmissionItem item : approved) {
+                var resource = fileStorageService.loadAsResource(item.getStoredFileName());
+                String ext = extensionOf(item.getStoredFileName());
+                String base = sanitize(company.getName() + "_" + item.getRequirement().getName());
+                String entryName = uniquify(base + ext, usedNames);
+                zos.putNextEntry(new java.util.zip.ZipEntry(entryName));
+                try (var in = resource.getInputStream()) {
+                    in.transferTo(zos);
+                }
+                zos.closeEntry();
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("ZIP 생성 실패", e);
+        }
+        return new ZipResult(company.getName() + "_완료사진.zip", baos.toByteArray());
+    }
+
+    private String extensionOf(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        return dot >= 0 ? fileName.substring(dot) : "";
+    }
+
+    private String sanitize(String name) {
+        return name.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
+    private String uniquify(String name, java.util.Set<String> used) {
+        String candidate = name;
+        int i = 1;
+        int dot = name.lastIndexOf('.');
+        String base = dot >= 0 ? name.substring(0, dot) : name;
+        String ext = dot >= 0 ? name.substring(dot) : "";
+        while (!used.add(candidate)) {
+            candidate = base + "_" + (++i) + ext;
+        }
+        return candidate;
+    }
 }

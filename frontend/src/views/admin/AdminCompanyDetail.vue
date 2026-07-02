@@ -32,6 +32,12 @@ const processing = ref(false)
 const lightbox = ref('')
 
 const companyId = computed(() => Number(props.id))
+const approvedCount = computed(
+  () => (submission.value?.items || []).filter((i) => i.status === 'APPROVED' && i.photoUrl).length
+)
+const zipUrl = computed(() =>
+  fileUrl(`/api/admin/companies/${companyId.value}/submissions/approved-zip`)
+)
 
 async function loadAll() {
   loading.value = true
@@ -186,9 +192,14 @@ onMounted(loadAll)
     <section class="card submissions">
       <div class="sub-head">
         <h2 class="ctitle">제출 사진 검수</h2>
-        <span v-if="submission?.latestSubmittedAt" class="muted small">
-          최근 제출: {{ new Date(submission.latestSubmittedAt).toLocaleString('ko-KR') }}
-        </span>
+        <div class="sub-head-right">
+          <a v-if="approvedCount > 0" class="btn btn-sm zip-btn" :href="zipUrl" download>
+            ⬇ 완료 사진 ZIP ({{ approvedCount }})
+          </a>
+          <span v-if="submission?.latestSubmittedAt" class="muted small">
+            최근 제출: {{ new Date(submission.latestSubmittedAt).toLocaleString('ko-KR') }}
+          </span>
+        </div>
       </div>
 
       <div v-if="!submission || submission.items.length === 0" class="muted">
@@ -334,9 +345,19 @@ onMounted(loadAll)
 }
 .sub-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.sub-head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.zip-btn {
+  text-decoration: none;
 }
 .item-grid {
   display: grid;

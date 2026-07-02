@@ -8,7 +8,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Tag(name = "관리자-검수", description = "관리자 제출 사진 조회 및 검수 API")
 @RestController
@@ -22,6 +30,17 @@ public class AdminSubmissionController {
     @GetMapping("/companies/{companyId}/submissions")
     public CompanySubmissionResponse getSubmissions(@PathVariable Long companyId) {
         return submissionService.getCompanySubmissions(companyId);
+    }
+
+    @Operation(summary = "완료 사진 ZIP 다운로드", description = "통과된 사진들을 기업명_사진명.zip 하나로 묶어 다운로드")
+    @GetMapping("/companies/{companyId}/submissions/approved-zip")
+    public ResponseEntity<Resource> downloadApprovedZip(@PathVariable Long companyId) {
+        AdminSubmissionService.ZipResult zip = submissionService.zipApprovedPhotos(companyId);
+        String encoded = URLEncoder.encode(zip.fileName(), StandardCharsets.UTF_8).replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encoded)
+                .body(new ByteArrayResource(zip.data()));
     }
 
     @Operation(summary = "통과", description = "해당 사진을 승인")

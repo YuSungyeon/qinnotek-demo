@@ -98,7 +98,7 @@ async function submit() {
       <section class="company-head">
         <div>
           <div class="company-name">{{ status.companyName }}</div>
-          <div class="muted" style="font-size: 13px">사진 제출</div>
+          <div class="muted" style="font-size: 20px">사진 제출</div>
         </div>
         <button class="btn btn-ghost btn-sm" @click="reset">다시 조회</button>
       </section>
@@ -150,24 +150,36 @@ async function submit() {
 
 <style scoped>
 .wrap {
-  max-width: 520px;
+  max-width: 560px;
   margin: 0 auto;
   padding: 16px 16px 60px;
+  font-size: 24px; /* 고객 기본 글자 1.5배 (16 → 24) */
+}
+/* 입력/버튼도 1.5배로 */
+.wrap .input {
+  font-size: 24px;
+  padding: 14px 16px;
+}
+.wrap .btn-lg {
+  font-size: 26px;
+}
+.wrap .btn-sm {
+  font-size: 20px;
 }
 .topbar {
   text-align: center;
   padding: 8px 0 16px;
 }
 .topbar h1 {
-  font-size: 20px;
+  font-size: 30px;
 }
 .title {
-  font-size: 18px;
+  font-size: 27px;
   margin-bottom: 4px;
 }
 .sub {
   margin: 0 0 14px;
-  font-size: 14px;
+  font-size: 21px;
 }
 .lookup {
   margin-top: 10px;
@@ -179,7 +191,7 @@ async function submit() {
   margin-bottom: 16px;
 }
 .company-name {
-  font-size: 20px;
+  font-size: 30px;
   font-weight: 800;
 }
 .notice {
@@ -187,20 +199,21 @@ async function submit() {
   padding: 40px 20px;
 }
 .notice-icon {
-  font-size: 40px;
+  font-size: 56px;
   margin-bottom: 10px;
 }
 .notice-msg {
-  font-size: 17px;
+  font-size: 26px;
   font-weight: 700;
   margin: 0 0 6px;
 }
 .banner {
   margin-bottom: 12px;
   font-weight: 600;
+  font-size: 22px;
 }
 .section-hint {
-  font-size: 14px;
+  font-size: 21px;
   margin: 0 0 12px;
 }
 .items {
