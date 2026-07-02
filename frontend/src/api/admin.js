@@ -55,6 +55,16 @@ export const adminApi = {
     return client.delete(`/api/admin/requirements/${id}`).then((r) => r.data)
   },
 
+  // 관리자 설정 (알림 문자 수신 번호)
+  getSettings() {
+    return client.get('/api/admin/settings').then((r) => r.data)
+  },
+  updateAdminPhone(adminPhoneNumber) {
+    return client
+      .put('/api/admin/settings/admin-phone', { adminPhoneNumber })
+      .then((r) => r.data)
+  },
+
   // 제출/검수
   getSubmissions(companyId) {
     return client.get(`/api/admin/companies/${companyId}/submissions`).then((r) => r.data)

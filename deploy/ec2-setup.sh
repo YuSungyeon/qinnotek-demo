@@ -69,6 +69,10 @@ UPLOAD_DIR=${APP_DIR}/uploads
 CORS_ALLOWED_ORIGINS=${CORS_ORIGIN}
 # JVM 힙 상한 (작은 인스턴스 OOM 방지)
 JAVA_TOOL_OPTIONS=-Xmx320m -Xss512k
+# SMS(Solapi) - 발송하려면 SMS_ENABLED=true 로 바꾸고 키 입력 후 서비스 재기동
+SMS_ENABLED=${SMS_ENABLED:-false}
+SOLAPI_API_KEY=${SOLAPI_API_KEY:-}
+SOLAPI_API_SECRET=${SOLAPI_API_SECRET:-}
 ENV
 sudo chmod 600 "${ENV_FILE}"
 

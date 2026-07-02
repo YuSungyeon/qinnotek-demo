@@ -5,6 +5,7 @@ import AdminLayout from '../views/admin/AdminLayout.vue'
 import AdminCompanies from '../views/admin/AdminCompanies.vue'
 import AdminCompanyDetail from '../views/admin/AdminCompanyDetail.vue'
 import AdminRequirements from '../views/admin/AdminRequirements.vue'
+import AdminSettings from '../views/admin/AdminSettings.vue'
 
 const routes = [
   { path: '/', name: 'customer', component: CustomerView },
@@ -15,7 +16,8 @@ const routes = [
       { path: '', redirect: '/admin/companies' },
       { path: 'companies', name: 'admin-companies', component: AdminCompanies },
       { path: 'companies/:id', name: 'admin-company-detail', component: AdminCompanyDetail, props: true },
-      { path: 'requirements', name: 'admin-requirements', component: AdminRequirements }
+      { path: 'requirements', name: 'admin-requirements', component: AdminRequirements },
+      { path: 'settings', name: 'admin-settings', component: AdminSettings }
     ]
   }
 ]

@@ -12,6 +12,7 @@ import { RouterLink, RouterView } from 'vue-router'
       <nav>
         <RouterLink to="/admin/companies" class="nav-item">기업 관리</RouterLink>
         <RouterLink to="/admin/requirements" class="nav-item">요구 사진 관리</RouterLink>
+        <RouterLink to="/admin/settings" class="nav-item">관리자 설정</RouterLink>
       </nav>
       <RouterLink to="/" class="nav-item customer-link">↗ 고객 화면</RouterLink>
     </aside>

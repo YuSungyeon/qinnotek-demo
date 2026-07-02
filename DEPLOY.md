@@ -119,6 +119,28 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 
 ---
 
+## SMS(Solapi) 알림 활성화
+
+고객이 사진을 제출하면 **관리자 설정 페이지(`/admin/settings`)에 저장한 번호**로 알림 문자가 발송됩니다.
+(from·to 모두 해당 번호 — Solapi에 **발신번호로 사전 등록**되어 있어야 함)
+
+EC2에서 키를 등록하고 서비스 재기동:
+```bash
+sudo tee -a /etc/photo-submission.env >/dev/null <<'ENV'
+SMS_ENABLED=true
+SOLAPI_API_KEY=NCSQTOF2QYQ9TNME
+SOLAPI_API_SECRET=발급받은_시크릿
+ENV
+# (이미 빈 값으로 들어가 있으면 해당 줄을 수정)
+sudo systemctl restart photo-submission
+```
+
+확인:
+- `/admin/settings` 에서 **SMS 연동: 활성화됨** 표시 + 관리자 번호 저장
+- 고객이 제출 → 문자 수신, 실패 시 로그: `sudo journalctl -u photo-submission | grep SMS`
+
+> 키/시크릿은 서버 env에만 두고 UI엔 노출하지 않습니다. 발송 실패는 로그로만 남고 제출 흐름은 정상 진행됩니다.
+
 ## 운영 명령 모음
 
 ```bash

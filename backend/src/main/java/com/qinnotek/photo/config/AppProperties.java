@@ -16,6 +16,7 @@ public class AppProperties {
 
     private final Upload upload = new Upload();
     private final Cors cors = new Cors();
+    private final Sms sms = new Sms();
 
     @Getter
     @Setter
@@ -29,5 +30,16 @@ public class AppProperties {
     public static class Cors {
         /** 허용할 프론트엔드 오리진(콤마 구분) */
         private String allowedOrigins = "http://localhost:5173";
+    }
+
+    @Getter
+    @Setter
+    public static class Sms {
+        /** SMS 발송 활성화 여부 */
+        private boolean enabled = false;
+        /** Solapi API Key */
+        private String apiKey = "";
+        /** Solapi API Secret */
+        private String apiSecret = "";
     }
 }
