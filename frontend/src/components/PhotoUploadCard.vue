@@ -6,7 +6,7 @@ import Icon from './Icon.vue'
 const props = defineProps({
   item: { type: Object, required: true }
 })
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'zoom'])
 
 const cameraInput = ref(null)
 const galleryInput = ref(null)
@@ -41,11 +41,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="photo-card" :class="{ returned: item.status === 'RETURNED' }" :data-item-id="item.itemId">
+  <div
+    class="photo-card"
+    :class="{ done: !!previewUrl, returned: item.status === 'RETURNED' }"
+    :data-item-id="item.itemId"
+  >
     <div class="head">
+      <span class="step">
+        <Icon v-if="previewUrl" name="check" :size="26" />
+      </span>
       <span class="name">{{ item.name }}</span>
-      <span v-if="previewUrl" class="done-chip">✓ 선택됨</span>
-      <span v-else class="todo-chip">미선택</span>
+      <span class="status-chip" :class="previewUrl ? 'ok' : 'todo'">
+        {{ previewUrl ? '완료' : '필요' }}
+      </span>
     </div>
 
     <p v-if="item.description" class="desc">{{ item.description }}</p>
@@ -55,13 +63,13 @@ onBeforeUnmount(() => {
       <span>{{ item.rejectReason }}</span>
     </div>
 
-    <!-- 예시 사진(위) → 내 사진(아래) 세로 배치 -->
+    <!-- 예시 사진(위) → 내 사진(아래) -->
     <div class="images">
-      <div v-if="item.exampleImageUrl" class="thumb">
+      <div v-if="item.exampleImageUrl" class="thumb" @click="emit('zoom', fileUrl(item.exampleImageUrl))">
         <span class="thumb-label">예시</span>
         <img :src="fileUrl(item.exampleImageUrl)" alt="예시" />
       </div>
-      <div v-if="previewUrl" class="thumb">
+      <div v-if="previewUrl" class="thumb" @click="emit('zoom', previewUrl)">
         <span class="thumb-label uploaded">내 사진</span>
         <img :src="previewUrl" alt="선택한 사진" />
       </div>
@@ -70,11 +78,13 @@ onBeforeUnmount(() => {
     <div v-if="error" class="alert alert-error" style="margin-bottom: 10px">{{ error }}</div>
 
     <div class="actions">
-      <button class="btn btn-ghost btn-sm" @click="pickCamera">
-        <Icon name="camera" :size="18" /> 카메라 촬영
+      <button class="btn btn-ghost tap-btn" @click="pickCamera">
+        <Icon name="camera" :size="22" />
+        <span>{{ previewUrl ? '다시 촬영' : '카메라 촬영' }}</span>
       </button>
-      <button class="btn btn-ghost btn-sm" @click="pickGallery">
-        <Icon name="image" :size="18" /> 사진첩
+      <button class="btn btn-ghost tap-btn" @click="pickGallery">
+        <Icon name="image" :size="22" />
+        <span>사진첩</span>
       </button>
     </div>
 
@@ -96,6 +106,11 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.photo-card.done {
+  border-color: #86efac;
+  box-shadow: inset 4px 0 0 var(--success);
 }
 .photo-card.returned {
   border-color: #fca5a5;
@@ -104,27 +119,48 @@ onBeforeUnmount(() => {
 .head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  color: #fff;
+  background: #cbd5e1;
+}
+.photo-card.done .step {
+  background: var(--success);
 }
 .name {
   font-size: 24px;
   font-weight: 700;
+  flex: 1;
+  min-width: 0;
 }
-.done-chip {
-  font-size: 18px;
+.status-chip {
+  font-size: 17px;
   font-weight: 700;
-  color: var(--success);
+  padding: 3px 12px;
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
-.todo-chip {
-  font-size: 18px;
-  font-weight: 700;
+.status-chip.ok {
+  color: #15803d;
+  background: #f0fdf4;
+}
+.status-chip.todo {
   color: var(--text-muted);
+  background: #f1f5f9;
 }
 .desc {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: 21px;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 .reject {
@@ -134,7 +170,7 @@ onBeforeUnmount(() => {
   background: var(--danger-bg);
   border: 1px solid #fecaca;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   margin-bottom: 12px;
   font-size: 21px;
 }
@@ -142,34 +178,36 @@ onBeforeUnmount(() => {
   color: var(--danger);
   font-size: 18px;
 }
-/* 예시(위) → 내 사진(아래) 세로 배치, 각 이미지는 카드 가로 폭에 맞춤 */
 .images {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .thumb {
   position: relative;
   width: 100%;
+  cursor: pointer;
 }
 .thumb img {
   width: 100%;
   height: auto;
+  max-height: 240px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   display: block;
+  background: #f8fafc;
 }
 .thumb-label {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  font-size: 15px;
+  top: 8px;
+  left: 8px;
+  font-size: 16px;
   font-weight: 700;
   color: #fff;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 2px 9px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 11px;
   border-radius: 999px;
 }
 .thumb-label.uploaded {
@@ -177,12 +215,14 @@ onBeforeUnmount(() => {
 }
 .actions {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 10px;
 }
-.actions .btn-sm {
-  font-size: 20px;
-  padding: 10px 16px;
+.tap-btn {
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 8px;
+  font-size: 19px;
+  border-radius: 12px;
 }
 </style>
