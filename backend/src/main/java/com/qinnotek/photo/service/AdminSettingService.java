@@ -35,20 +35,21 @@ public class AdminSettingService {
     }
 
     @Transactional
-    public AdminSettingDto.Response updateTheme(String themeId, String primaryColor) {
+    public AdminSettingDto.Response updateTheme(String designId, String themeId, String primaryColor) {
         AdminSetting setting = repository.findTopByOrderByIdAsc().orElseGet(AdminSetting::new);
-        setting.changeTheme(themeId, primaryColor);
+        setting.changeTheme(designId, themeId, primaryColor);
         repository.save(setting);
         return toResponse(setting);
     }
 
-    /** 공개 테마 조회 (설정 없으면 기본 blue) */
+    /** 공개 테마 조회 (설정 없으면 기본값) */
     public AdminSettingDto.Theme getTheme() {
         return repository.findTopByOrderByIdAsc()
                 .map(s -> new AdminSettingDto.Theme(
+                        s.getDesignId() == null ? "base" : s.getDesignId(),
                         s.getThemeId() == null ? "blue" : s.getThemeId(),
                         s.getPrimaryColor()))
-                .orElse(new AdminSettingDto.Theme("blue", null));
+                .orElse(new AdminSettingDto.Theme("base", "blue", null));
     }
 
     /** 알림 발송에 사용할 관리자 번호 (없으면 null) */
@@ -66,6 +67,7 @@ public class AdminSettingService {
         return new AdminSettingDto.Response(
                 setting.getAdminPhoneNumber(),
                 configured,
+                setting.getDesignId() == null ? "base" : setting.getDesignId(),
                 setting.getThemeId() == null ? "blue" : setting.getThemeId(),
                 setting.getPrimaryColor());
     }

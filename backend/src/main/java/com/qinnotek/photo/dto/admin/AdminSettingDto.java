@@ -14,6 +14,7 @@ public class AdminSettingDto {
     public record Response(
             String adminPhoneNumber,
             boolean smsConfigured,
+            String designId,
             String themeId,
             String primaryColor
     ) {
@@ -22,10 +23,10 @@ public class AdminSettingDto {
     public record UpdatePhone(String adminPhoneNumber) {
     }
 
-    public record UpdateTheme(String themeId, String primaryColor) {
+    public record UpdateTheme(String designId, String themeId, String primaryColor) {
     }
 
     /** 공개 테마 조회용 (고객 화면 포함) */
-    public record Theme(String themeId, String primaryColor) {
+    public record Theme(String designId, String themeId, String primaryColor) {
     }
 }

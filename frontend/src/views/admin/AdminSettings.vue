@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/admin'
 import { themeApi } from '../../api/theme'
-import { THEMES, applyTheme, saveThemeLocal, resolveColors } from '../../theme'
+import { THEMES, DESIGN_META, applyTheme, saveThemeLocal, resolveColors } from '../../theme'
 
 const phone = ref('')
 const smsConfigured = ref(false)
@@ -11,11 +11,14 @@ const saving = ref(false)
 const msg = ref('')
 const error = ref('')
 
-// 테마
+// 디자인 / 테마
+const designs = DESIGN_META
 const presets = Object.entries(THEMES).map(([id, t]) => ({ id, ...t }))
+const designId = ref('base')
 const themeId = ref('blue')
 const primaryColor = ref('') // 커스텀(있으면 우선)
 const themeMsg = ref('')
+const isBase = computed(() => designId.value === 'base')
 const currentPrimary = computed(
   () => resolveColors({ themeId: themeId.value, primaryColor: primaryColor.value || null }).primary
 )
@@ -27,6 +30,7 @@ async function load() {
     const s = await adminApi.getSettings()
     phone.value = s.adminPhoneNumber || ''
     smsConfigured.value = s.smsConfigured
+    designId.value = s.designId || 'base'
     themeId.value = s.themeId || 'blue'
     primaryColor.value = s.primaryColor || ''
   } catch (err) {
@@ -37,7 +41,11 @@ async function load() {
 }
 
 async function persistTheme() {
-  const cfg = { themeId: themeId.value, primaryColor: primaryColor.value || null }
+  const cfg = {
+    designId: designId.value,
+    themeId: themeId.value,
+    primaryColor: primaryColor.value || null
+  }
   applyTheme(cfg) // 즉시 반영
   saveThemeLocal(cfg)
   themeMsg.value = '적용됨'
@@ -47,6 +55,11 @@ async function persistTheme() {
   } catch (err) {
     error.value = err.message
   }
+}
+
+function selectDesign(id) {
+  designId.value = id
+  persistTheme()
 }
 
 function selectPreset(id) {
@@ -91,14 +104,38 @@ onMounted(load)
     <div v-if="loading" class="muted">불러오는 중…</div>
 
     <template v-else>
-      <!-- 테마 / 색상 -->
+      <!-- 기업 디자인 -->
       <section class="card theme-card">
         <div class="theme-head">
-          <h2 class="ctitle">테마 · 색상</h2>
+          <h2 class="ctitle">기업 디자인</h2>
           <span v-if="themeMsg" class="ok-msg" style="margin: 0">{{ themeMsg }}</span>
         </div>
         <p class="muted" style="font-size: 13px; margin: 0 0 14px">
-          선택 즉시 전 화면(고객·관리자)에 반영되고 저장됩니다.
+          기업을 선택하면 해당 디자인(색·폰트·모양)이 전 화면에 즉시 반영·저장됩니다.
+        </p>
+        <div class="theme-grid">
+          <button
+            v-for="d in designs"
+            :key="d.id"
+            class="theme-item"
+            :class="{ active: designId === d.id }"
+            @click="selectDesign(d.id)"
+          >
+            <span class="swatches">
+              <span v-for="(c, i) in d.colors" :key="i" :style="{ background: c }"></span>
+            </span>
+            <span class="theme-name">{{ d.name }}</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 색상 (기본 디자인일 때만) -->
+      <section v-if="isBase" class="card theme-card">
+        <div class="theme-head">
+          <h2 class="ctitle">강조 색상</h2>
+        </div>
+        <p class="muted" style="font-size: 13px; margin: 0 0 14px">
+          기본 디자인의 강조색을 선택합니다.
         </p>
 
         <div class="theme-grid">

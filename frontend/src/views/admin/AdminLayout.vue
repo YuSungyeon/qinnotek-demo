@@ -49,13 +49,13 @@ const nav = [
 .sidebar {
   width: 244px;
   flex: 0 0 244px;
-  background: linear-gradient(180deg, #0f172a 0%, #131c31 100%);
-  color: #e2e8f0;
+  background: var(--side-bg, linear-gradient(180deg, #0f172a 0%, #131c31 100%));
+  color: var(--side-text, #e2e8f0);
   padding: 18px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid var(--side-border, rgba(255, 255, 255, 0.06));
   position: sticky;
   top: 0;
   height: 100vh;
@@ -74,7 +74,7 @@ const nav = [
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  background: var(--side-brand-bg, linear-gradient(135deg, var(--primary), var(--primary-dark)));
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
 }
 .brand-text {
@@ -106,7 +106,7 @@ nav {
   border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
-  color: #cbd5e1;
+  color: var(--side-text, #cbd5e1);
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
 }
@@ -118,13 +118,16 @@ nav {
   flex: 0 0 auto;
 }
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--side-hover, rgba(255, 255, 255, 0.06));
   color: #fff;
 }
 .nav-item.router-link-active {
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  color: #fff;
+  background: var(--side-active-bg, linear-gradient(135deg, var(--primary), var(--primary-dark)));
+  color: var(--side-active-text, #fff);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.3);
+}
+.nav-item.router-link-active:hover {
+  color: var(--side-active-text, #fff);
 }
 .customer-link {
   margin-top: auto;

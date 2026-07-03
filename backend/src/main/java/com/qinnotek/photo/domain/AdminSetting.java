@@ -21,7 +21,11 @@ public class AdminSetting {
     /** 관리자 전화번호 (알림 수신 = 발신) */
     private String adminPhoneNumber;
 
-    /** 테마 프리셋 id (blue/green/warm/indigo) */
+    /** 기업 디자인 팩 id (base/apple/figma/airtable) */
+    @Column(length = 20)
+    private String designId = "base";
+
+    /** 테마 프리셋 id (blue/green/warm/indigo) - base 디자인의 강조색 */
     @Column(length = 20)
     private String themeId = "blue";
 
@@ -33,7 +37,8 @@ public class AdminSetting {
         this.adminPhoneNumber = (phoneNumber == null || phoneNumber.isBlank()) ? null : phoneNumber.trim();
     }
 
-    public void changeTheme(String themeId, String primaryColor) {
+    public void changeTheme(String designId, String themeId, String primaryColor) {
+        this.designId = (designId == null || designId.isBlank()) ? "base" : designId.trim();
         this.themeId = (themeId == null || themeId.isBlank()) ? "blue" : themeId.trim();
         this.primaryColor = (primaryColor == null || primaryColor.isBlank()) ? null : primaryColor.trim();
     }
