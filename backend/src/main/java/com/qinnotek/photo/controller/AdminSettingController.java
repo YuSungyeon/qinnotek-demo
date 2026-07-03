@@ -26,4 +26,10 @@ public class AdminSettingController {
     public AdminSettingDto.Response updateAdminPhone(@RequestBody AdminSettingDto.UpdatePhone request) {
         return settingService.updateAdminPhone(request.adminPhoneNumber());
     }
+
+    @Operation(summary = "테마/색상 저장", description = "프리셋 테마 id 또는 커스텀 기본색(hex) 저장. 전 화면에 반영")
+    @PutMapping("/theme")
+    public AdminSettingDto.Response updateTheme(@RequestBody AdminSettingDto.UpdateTheme request) {
+        return settingService.updateTheme(request.themeId(), request.primaryColor());
+    }
 }

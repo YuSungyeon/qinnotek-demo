@@ -34,6 +34,23 @@ public class AdminSettingService {
         return toResponse(setting);
     }
 
+    @Transactional
+    public AdminSettingDto.Response updateTheme(String themeId, String primaryColor) {
+        AdminSetting setting = repository.findTopByOrderByIdAsc().orElseGet(AdminSetting::new);
+        setting.changeTheme(themeId, primaryColor);
+        repository.save(setting);
+        return toResponse(setting);
+    }
+
+    /** 공개 테마 조회 (설정 없으면 기본 blue) */
+    public AdminSettingDto.Theme getTheme() {
+        return repository.findTopByOrderByIdAsc()
+                .map(s -> new AdminSettingDto.Theme(
+                        s.getThemeId() == null ? "blue" : s.getThemeId(),
+                        s.getPrimaryColor()))
+                .orElse(new AdminSettingDto.Theme("blue", null));
+    }
+
     /** 알림 발송에 사용할 관리자 번호 (없으면 null) */
     public String getAdminPhoneNumber() {
         return repository.findTopByOrderByIdAsc()
@@ -46,6 +63,10 @@ public class AdminSettingService {
         boolean configured = sms.isEnabled()
                 && sms.getApiKey() != null && !sms.getApiKey().isBlank()
                 && sms.getApiSecret() != null && !sms.getApiSecret().isBlank();
-        return new AdminSettingDto.Response(setting.getAdminPhoneNumber(), configured);
+        return new AdminSettingDto.Response(
+                setting.getAdminPhoneNumber(),
+                configured,
+                setting.getThemeId() == null ? "blue" : setting.getThemeId(),
+                setting.getPrimaryColor());
     }
 }

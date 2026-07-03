@@ -1,6 +1,8 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { adminApi } from '../../api/admin'
+import { themeApi } from '../../api/theme'
+import { THEMES, applyTheme, saveThemeLocal, resolveColors } from '../../theme'
 
 const phone = ref('')
 const smsConfigured = ref(false)
@@ -9,6 +11,15 @@ const saving = ref(false)
 const msg = ref('')
 const error = ref('')
 
+// 테마
+const presets = Object.entries(THEMES).map(([id, t]) => ({ id, ...t }))
+const themeId = ref('blue')
+const primaryColor = ref('') // 커스텀(있으면 우선)
+const themeMsg = ref('')
+const currentPrimary = computed(
+  () => resolveColors({ themeId: themeId.value, primaryColor: primaryColor.value || null }).primary
+)
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -16,11 +27,37 @@ async function load() {
     const s = await adminApi.getSettings()
     phone.value = s.adminPhoneNumber || ''
     smsConfigured.value = s.smsConfigured
+    themeId.value = s.themeId || 'blue'
+    primaryColor.value = s.primaryColor || ''
   } catch (err) {
     error.value = err.message
   } finally {
     loading.value = false
   }
+}
+
+async function persistTheme() {
+  const cfg = { themeId: themeId.value, primaryColor: primaryColor.value || null }
+  applyTheme(cfg) // 즉시 반영
+  saveThemeLocal(cfg)
+  themeMsg.value = '적용됨'
+  try {
+    await themeApi.update(cfg)
+    setTimeout(() => (themeMsg.value = ''), 1500)
+  } catch (err) {
+    error.value = err.message
+  }
+}
+
+function selectPreset(id) {
+  themeId.value = id
+  primaryColor.value = '' // 프리셋 선택 시 커스텀 해제
+  persistTheme()
+}
+
+function onCustomColor(e) {
+  primaryColor.value = e.target.value
+  persistTheme()
 }
 
 async function save() {
@@ -53,8 +90,48 @@ onMounted(load)
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
     <div v-if="loading" class="muted">불러오는 중…</div>
 
-    <section v-else class="card" style="max-width: 480px">
-      <h2 class="ctitle">알림 문자 수신 번호</h2>
+    <template v-else>
+      <!-- 테마 / 색상 -->
+      <section class="card theme-card">
+        <div class="theme-head">
+          <h2 class="ctitle">테마 · 색상</h2>
+          <span v-if="themeMsg" class="ok-msg" style="margin: 0">{{ themeMsg }}</span>
+        </div>
+        <p class="muted" style="font-size: 13px; margin: 0 0 14px">
+          선택 즉시 전 화면(고객·관리자)에 반영되고 저장됩니다.
+        </p>
+
+        <div class="theme-grid">
+          <button
+            v-for="p in presets"
+            :key="p.id"
+            class="theme-item"
+            :class="{ active: !primaryColor && themeId === p.id }"
+            @click="selectPreset(p.id)"
+          >
+            <span class="swatches">
+              <span :style="{ background: p.primary }"></span>
+              <span :style="{ background: p.dark }"></span>
+              <span :style="{ background: p.soft }"></span>
+            </span>
+            <span class="theme-name">{{ p.name }}</span>
+          </button>
+        </div>
+
+        <div class="custom-row">
+          <label class="label" style="margin: 0">커스텀 색상</label>
+          <input
+            type="color"
+            class="color-input"
+            :value="currentPrimary"
+            @input="onCustomColor"
+          />
+          <span class="muted" style="font-size: 13px">{{ primaryColor || '프리셋 사용 중' }}</span>
+        </div>
+      </section>
+
+      <section class="card" style="max-width: 480px">
+        <h2 class="ctitle">알림 문자 수신 번호</h2>
       <label class="label">관리자 전화번호</label>
       <div class="row">
         <input v-model="phone" class="input" placeholder="예: 01012345678" @keyup.enter="save" />
@@ -67,7 +144,8 @@ onMounted(load)
         <span v-if="smsConfigured">활성화됨 (발송 가능)</span>
         <span v-else>비활성화 — 서버에 Solapi 키(SOLAPI_API_KEY/SECRET)와 SMS_ENABLED=true 설정 필요</span>
       </div>
-    </section>
+      </section>
+    </template>
   </div>
 </template>
 
@@ -88,6 +166,69 @@ onMounted(load)
 .row > .input {
   flex: 1;
   min-width: 0;
+}
+.theme-card {
+  max-width: 620px;
+  margin-bottom: 16px;
+}
+.theme-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.theme-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.theme-item:hover {
+  border-color: var(--border-strong);
+}
+.theme-item.active {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+.swatches {
+  display: flex;
+  gap: 5px;
+}
+.swatches span {
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+.theme-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.color-input {
+  width: 46px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
 }
 .ok-msg {
   display: inline-block;

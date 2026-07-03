@@ -21,7 +21,20 @@ public class AdminSetting {
     /** 관리자 전화번호 (알림 수신 = 발신) */
     private String adminPhoneNumber;
 
+    /** 테마 프리셋 id (blue/green/warm/indigo) */
+    @Column(length = 20)
+    private String themeId = "blue";
+
+    /** 커스텀 기본색(hex). 지정 시 프리셋보다 우선 */
+    @Column(length = 20)
+    private String primaryColor;
+
     public void changeAdminPhoneNumber(String phoneNumber) {
         this.adminPhoneNumber = (phoneNumber == null || phoneNumber.isBlank()) ? null : phoneNumber.trim();
+    }
+
+    public void changeTheme(String themeId, String primaryColor) {
+        this.themeId = (themeId == null || themeId.isBlank()) ? "blue" : themeId.trim();
+        this.primaryColor = (primaryColor == null || primaryColor.isBlank()) ? null : primaryColor.trim();
     }
 }

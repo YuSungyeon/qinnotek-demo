@@ -74,8 +74,8 @@ const nav = [
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
 }
 .brand-text {
   display: flex;
@@ -122,9 +122,9 @@ nav {
   color: #fff;
 }
 .nav-item.router-link-active {
-  background: linear-gradient(135deg, #2563eb, #4f46e5);
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: #fff;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.3);
 }
 .customer-link {
   margin-top: auto;
