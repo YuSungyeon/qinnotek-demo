@@ -1,10 +1,11 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
+import Icon from '../../components/Icon.vue'
 
 const nav = [
-  { to: '/admin/companies', icon: '🏢', label: '기업 관리' },
-  { to: '/admin/requirements', icon: '🗂️', label: '요구 사진 관리' },
-  { to: '/admin/settings', icon: '⚙️', label: '관리자 설정' }
+  { to: '/admin/companies', icon: 'building', label: '기업 관리' },
+  { to: '/admin/requirements', icon: 'layers', label: '요구 사진 관리' },
+  { to: '/admin/settings', icon: 'settings', label: '관리자 설정' }
 ]
 </script>
 
@@ -12,7 +13,7 @@ const nav = [
   <div class="admin">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">📸</div>
+        <div class="brand-mark"><Icon name="camera" :size="21" /></div>
         <div class="brand-text">
           <strong>사진 검수</strong>
           <span>Admin Console</span>
@@ -21,13 +22,13 @@ const nav = [
 
       <nav>
         <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="nav-item">
-          <span class="nav-icon">{{ n.icon }}</span>
+          <span class="nav-icon"><Icon :name="n.icon" :size="18" /></span>
           <span>{{ n.label }}</span>
         </RouterLink>
       </nav>
 
       <RouterLink to="/" class="nav-item customer-link">
-        <span class="nav-icon">↗</span>
+        <span class="nav-icon"><Icon name="arrowUpRight" :size="18" /></span>
         <span>고객 화면</span>
       </RouterLink>
     </aside>
@@ -72,7 +73,7 @@ const nav = [
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  color: #fff;
   background: linear-gradient(135deg, #2563eb, #4f46e5);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
@@ -110,9 +111,11 @@ nav {
   white-space: nowrap;
 }
 .nav-icon {
-  font-size: 17px;
   width: 20px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
 }
 .nav-item:hover {
   background: rgba(255, 255, 255, 0.06);

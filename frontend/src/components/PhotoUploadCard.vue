@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onBeforeUnmount } from 'vue'
 import { fileUrl } from '../api/client'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   item: { type: Object, required: true }
@@ -69,8 +70,12 @@ onBeforeUnmount(() => {
     <div v-if="error" class="alert alert-error" style="margin-bottom: 10px">{{ error }}</div>
 
     <div class="actions">
-      <button class="btn btn-ghost btn-sm" @click="pickCamera">📷 카메라 촬영</button>
-      <button class="btn btn-ghost btn-sm" @click="pickGallery">🖼️ 사진첩</button>
+      <button class="btn btn-ghost btn-sm" @click="pickCamera">
+        <Icon name="camera" :size="18" /> 카메라 촬영
+      </button>
+      <button class="btn btn-ghost btn-sm" @click="pickGallery">
+        <Icon name="image" :size="18" /> 사진첩
+      </button>
     </div>
 
     <input

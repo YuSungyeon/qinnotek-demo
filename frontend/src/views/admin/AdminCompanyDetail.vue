@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi } from '../../api/admin'
 import { fileUrl } from '../../api/client'
+import Icon from '../../components/Icon.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -194,7 +195,7 @@ onMounted(loadAll)
         <h2 class="ctitle">제출 사진 검수</h2>
         <div class="sub-head-right">
           <a v-if="approvedCount > 0" class="btn btn-sm zip-btn" :href="zipUrl" download>
-            ⬇ 완료 사진 ZIP ({{ approvedCount }})
+            <Icon name="download" :size="16" /> 완료 사진 ZIP ({{ approvedCount }})
           </a>
           <span v-if="submission?.latestSubmittedAt" class="muted small">
             최근 제출: {{ new Date(submission.latestSubmittedAt).toLocaleString('ko-KR') }}

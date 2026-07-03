@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { customerApi } from '../../api/customer'
 import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
+import Icon from '../../components/Icon.vue'
 
 const phone = ref('')
 const status = ref(null) // lookup 결과
@@ -119,13 +120,13 @@ async function submit() {
 
       <!-- 검수 중 / 완료 안내 -->
       <section v-if="status.state === 'UNDER_REVIEW'" class="card notice">
-        <div class="notice-icon">🕓</div>
+        <div class="notice-icon review"><Icon name="clock" :size="52" /></div>
         <p class="notice-msg">{{ status.message }}</p>
         <p class="muted">감사합니다. 직원이 확인 중입니다.</p>
       </section>
 
       <section v-else-if="status.state === 'COMPLETED'" class="card notice">
-        <div class="notice-icon">✅</div>
+        <div class="notice-icon done"><Icon name="check" :size="52" /></div>
         <p class="notice-msg">{{ status.message }}</p>
       </section>
 
@@ -213,8 +214,15 @@ async function submit() {
   padding: 40px 20px;
 }
 .notice-icon {
-  font-size: 56px;
-  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.notice-icon.review {
+  color: var(--primary);
+}
+.notice-icon.done {
+  color: var(--success);
 }
 .notice-msg {
   font-size: 26px;
