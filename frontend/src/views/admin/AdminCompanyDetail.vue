@@ -278,10 +278,11 @@ onMounted(loadAll)
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 .page-head h1 {
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 800;
 }
 .grid {
   display: grid;
@@ -308,6 +309,10 @@ onMounted(loadAll)
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+.row > .input {
+  flex: 1;
+  min-width: 0;
 }
 .req-list {
   display: flex;
@@ -366,8 +371,15 @@ onMounted(loadAll)
 }
 .sub-item {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.sub-item:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 .sub-item-head {
   display: flex;

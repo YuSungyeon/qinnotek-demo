@@ -103,7 +103,8 @@ onMounted(load)
   margin-bottom: 18px;
 }
 .page-head h1 {
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 800;
 }
 .create-box {
   margin-bottom: 16px;
@@ -112,30 +113,46 @@ onMounted(load)
   display: flex;
   gap: 8px;
 }
+.row > .input {
+  flex: 1;
+  min-width: 0;
+}
 .search-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+}
+.search-row > .input {
+  flex: 1;
+  min-width: 0;
 }
 .tbl {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   background: var(--card);
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
 .tbl th,
 .tbl td {
   text-align: left;
-  padding: 14px 16px;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--border);
   font-size: 15px;
 }
 .tbl th {
-  background: #f9fafb;
-  font-size: 13px;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--text-muted);
+}
+.tbl tbody tr {
+  transition: background 0.12s;
 }
 .tbl tbody tr:last-child td {
   border-bottom: none;
@@ -144,7 +161,7 @@ onMounted(load)
   cursor: pointer;
 }
 .clickable:hover {
-  background: #f9fafb;
+  background: var(--primary-soft);
 }
 .strong {
   font-weight: 700;

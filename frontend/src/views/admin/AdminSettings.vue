@@ -73,7 +73,8 @@ onMounted(load)
 
 <style scoped>
 .page-head h1 {
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 800;
   margin-bottom: 6px;
 }
 .ctitle {
@@ -83,6 +84,10 @@ onMounted(load)
 .row {
   display: flex;
   gap: 8px;
+}
+.row > .input {
+  flex: 1;
+  min-width: 0;
 }
 .ok-msg {
   display: inline-block;

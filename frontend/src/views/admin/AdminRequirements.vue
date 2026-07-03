@@ -140,7 +140,8 @@ onMounted(load)
 
 <style scoped>
 .page-head h1 {
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 800;
   margin-bottom: 6px;
 }
 .ctitle {
@@ -181,10 +182,16 @@ onMounted(load)
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.req-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 .thumb {
   aspect-ratio: 16/10;
-  background: #f3f4f6;
+  background: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: center;
