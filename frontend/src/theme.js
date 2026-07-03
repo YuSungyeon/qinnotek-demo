@@ -35,14 +35,14 @@ export const DESIGNS = {
   },
   airtable: {
     name: 'Airtable',
-    primary: '#2d7ff9', dark: '#1c6ae4', soft: '#e8f1fe',
-    text: '#1d1f25', muted: '#6b7280',
-    border: '#e5e7eb', borderStrong: '#d4d8de',
-    bg: '#f7f8fa', card: '#ffffff',
-    radius: '12px', radiusSm: '8px', btnRadius: '8px',
-    shadowSm: '0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.08)', shadowMd: '0 6px 18px rgba(0,0,0,0.10)',
-    font: `Inter, ${KR}, system-ui, -apple-system, sans-serif`,
-    side: { bg: '#1d2030', text: '#c4c8d4', activeBg: '#2d7ff9', activeText: '#fff', hover: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.06)', brandBg: '#2d7ff9' }
+    primary: '#181d26', dark: '#0d1218', soft: '#f1f3f5',
+    text: '#181d26', muted: '#5b616b',
+    border: '#dddddd', borderStrong: '#9297a0',
+    bg: '#f8fafc', card: '#ffffff',
+    radius: '12px', radiusSm: '8px', btnRadius: '12px',
+    shadowSm: 'none', shadowMd: '0 4px 16px rgba(24,29,38,0.08)',
+    font: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, ${KR}, sans-serif`,
+    side: { bg: '#181d26', text: '#c4c8d0', activeBg: '#1b61c9', activeText: '#fff', hover: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.06)', brandBg: '#1b61c9' }
   }
 }
 
@@ -51,7 +51,7 @@ export const DESIGN_META = [
   { id: 'base', name: '기본', colors: ['#2563eb', '#0f172a', '#eff4ff'] },
   { id: 'apple', name: 'Apple', colors: ['#0066cc', '#1d1d1f', '#f5f5f7'] },
   { id: 'figma', name: 'Figma', colors: ['#000000', '#ff3d8b', '#dceeb1'] },
-  { id: 'airtable', name: 'Airtable', colors: ['#2d7ff9', '#fcb400', '#f82b60'] }
+  { id: 'airtable', name: 'Airtable', colors: ['#181d26', '#1b61c9', '#f5e9d4'] }
 ]
 
 const clamp = (n) => Math.max(0, Math.min(255, n))
