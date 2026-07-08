@@ -443,12 +443,8 @@ async function submit() {
   margin-top: 14px;
 }
 
-/* 상단 진행 헤더 (스크롤 시 상단 고정) */
+/* 상단 진행 헤더 (고정하지 않고 콘텐츠와 함께 스크롤 — 화면을 넓게 사용) */
 .progress-head {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--bg);
   padding: 8px 0 12px;
   margin-bottom: 2px;
 }
@@ -490,15 +486,15 @@ async function submit() {
   position: sticky;
   bottom: 0;
   margin: 18px -16px 0;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   background: rgba(245, 246, 248, 0.92);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--border);
 }
 .bar-hint {
   text-align: center;
-  margin: 0 0 8px;
-  font-size: 19px;
+  margin: 0 0 6px;
+  font-size: 17px;
   color: var(--text-muted);
 }
 
