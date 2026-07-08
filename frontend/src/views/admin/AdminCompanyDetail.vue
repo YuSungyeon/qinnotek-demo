@@ -65,7 +65,8 @@ async function savePhone() {
   savingPhone.value = true
   error.value = ''
   try {
-    company.value = await adminApi.updatePhone(companyId.value, phoneInput.value.trim())
+    // 고객 조회는 숫자만 비교하므로 하이픈 등 기호 제거 후 저장
+    company.value = await adminApi.updatePhone(companyId.value, phoneInput.value.replace(/\D/g, ''))
   } catch (err) {
     error.value = err.message
   } finally {

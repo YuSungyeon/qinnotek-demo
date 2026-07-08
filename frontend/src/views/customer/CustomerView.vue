@@ -27,6 +27,15 @@ const showUploadUI = computed(
   () => status.value && ['INITIAL', 'RETURNED'].includes(status.value.state)
 )
 
+/** 입력 중 자동 하이픈 (010-1234-5678) */
+function onPhoneInput(e) {
+  const d = e.target.value.replace(/\D/g, '').slice(0, 11)
+  let out = d
+  if (d.length > 3 && d.length <= 7) out = `${d.slice(0, 3)}-${d.slice(3)}`
+  else if (d.length > 7) out = `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+  phone.value = out
+}
+
 function clearSelected() {
   Object.keys(selectedFiles).forEach((k) => delete selectedFiles[k])
 }
@@ -37,13 +46,14 @@ function scrollToItem(itemId, block = 'center') {
 }
 
 async function lookup() {
-  if (!phone.value.trim()) return
+  const digits = phone.value.replace(/\D/g, '')
+  if (!digits) return
   error.value = ''
   loading.value = true
   status.value = null
   clearSelected()
   try {
-    status.value = await customerApi.lookup(phone.value.trim())
+    status.value = await customerApi.lookup(digits)
   } catch (err) {
     error.value = err.message
   } finally {
@@ -92,6 +102,7 @@ async function submit() {
     )
     status.value = await customerApi.submit(status.value.companyId)
     clearSelected()
+    window.scrollTo({ top: 0 })
   } catch (err) {
     error.value = err.message
   } finally {
@@ -101,151 +112,282 @@ async function submit() {
 </script>
 
 <template>
-  <div class="wrap">
-    <header class="topbar">
-      <h1>사진 제출</h1>
+  <div class="page">
+    <!-- 앱바 -->
+    <header class="appbar">
+      <div class="appbar-inner">
+        <span class="brand-mark"><Icon name="camera" :size="20" /></span>
+        <span class="brand-name">사진 제출 센터</span>
+      </div>
     </header>
 
-    <!-- 전화번호 조회 -->
-    <section v-if="!status" class="card lookup">
-      <h2 class="title">전화번호 확인</h2>
-      <p class="muted sub">기업에 등록된 전화번호를 입력해주세요.</p>
-      <input
-        v-model="phone"
-        class="input"
-        type="tel"
-        inputmode="numeric"
-        placeholder="예: 01012345678"
-        @keyup.enter="lookup"
-      />
-      <div v-if="error" class="alert alert-error" style="margin-top: 12px">{{ error }}</div>
-      <button class="btn btn-lg btn-block" style="margin-top: 14px" :disabled="loading" @click="lookup">
-        <span v-if="loading" class="spinner"></span>
-        <span v-else>조회</span>
-      </button>
-    </section>
-
-    <!-- 조회 결과 -->
-    <template v-else>
-      <!-- 검수 중 / 완료: 간단 헤더 + 안내 -->
-      <template v-if="!showUploadUI">
-        <section class="company-head">
-          <div>
-            <div class="company-name">{{ status.companyName }}</div>
-            <div class="muted" style="font-size: 20px">사진 제출</div>
-          </div>
-          <button class="btn btn-ghost btn-sm" @click="reset">다시 조회</button>
+    <main class="wrap">
+      <!-- ① 시작(전화번호 확인) -->
+      <template v-if="!status">
+        <section class="hero">
+          <h1>안녕하세요!<br />사진 제출을 도와드릴게요</h1>
+          <p class="hero-sub">기업에 등록된 전화번호를 입력하면<br />제출할 사진 목록을 확인할 수 있어요.</p>
         </section>
 
-        <section v-if="status.state === 'UNDER_REVIEW'" class="card notice">
-          <div class="notice-icon review"><Icon name="clock" :size="52" /></div>
-          <p class="notice-msg">{{ status.message }}</p>
-          <p class="muted">감사합니다. 직원이 확인 중입니다.</p>
+        <section class="card lookup-card">
+          <label class="lk-label" for="phone">전화번호</label>
+          <input
+            id="phone"
+            :value="phone"
+            class="input lk-input"
+            type="tel"
+            inputmode="numeric"
+            autocomplete="tel"
+            placeholder="010-0000-0000"
+            @input="onPhoneInput"
+            @keyup.enter="lookup"
+          />
+          <div v-if="error" class="alert alert-error" style="margin-top: 12px">{{ error }}</div>
+          <button class="btn btn-lg btn-block" style="margin-top: 14px" :disabled="loading" @click="lookup">
+            <span v-if="loading" class="spinner"></span>
+            <span v-else>시작하기</span>
+          </button>
+          <p class="privacy">입력하신 전화번호는 본인 확인 용도로만 사용됩니다.</p>
         </section>
 
-        <section v-else-if="status.state === 'COMPLETED'" class="card notice">
-          <div class="notice-icon done"><Icon name="check" :size="52" /></div>
-          <p class="notice-msg">{{ status.message }}</p>
-        </section>
+        <ol class="steps">
+          <li><span class="step-no">1</span><span>전화번호<br />확인</span></li>
+          <li class="step-line"></li>
+          <li><span class="step-no">2</span><span>사진<br />촬영</span></li>
+          <li class="step-line"></li>
+          <li><span class="step-no">3</span><span>제출<br />완료</span></li>
+        </ol>
       </template>
 
-      <!-- 업로드 UI (최초 제출 / 반환) -->
+      <!-- ② 조회 결과 -->
       <template v-else>
-        <div class="progress-head">
-          <div class="ph-top">
+        <!-- 검수 중 / 완료 -->
+        <template v-if="!showUploadUI">
+          <section class="company-head">
             <div>
               <div class="company-name">{{ status.companyName }}</div>
-              <div class="ph-sub muted">
-                {{ status.state === 'RETURNED' ? '반환된 사진을 다시 촬영해 주세요' : '필요한 사진을 촬영해 주세요' }}
-              </div>
+              <div class="muted" style="font-size: 19px">사진 제출</div>
             </div>
             <button class="btn btn-ghost btn-sm" @click="reset">다시 조회</button>
+          </section>
+
+          <section v-if="status.state === 'UNDER_REVIEW'" class="card notice">
+            <div class="notice-icon review"><Icon name="clock" :size="44" /></div>
+            <p class="notice-msg">제출이 완료되었어요</p>
+            <p class="notice-sub muted">{{ status.message }}<br />검수가 끝나면 안내해 드릴게요.</p>
+          </section>
+
+          <section v-else-if="status.state === 'COMPLETED'" class="card notice">
+            <div class="notice-icon done"><Icon name="check" :size="44" /></div>
+            <p class="notice-msg">모든 사진이 통과되었어요</p>
+            <p class="notice-sub muted">제출해 주셔서 감사합니다.</p>
+          </section>
+        </template>
+
+        <!-- 업로드 (최초 제출 / 반환) -->
+        <template v-else>
+          <div class="progress-head">
+            <div class="ph-top">
+              <div>
+                <div class="company-name">{{ status.companyName }}</div>
+                <div class="ph-sub muted">
+                  {{ status.state === 'RETURNED' ? '반환된 사진을 다시 촬영해 주세요' : '필요한 사진을 촬영해 주세요' }}
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-sm" @click="reset">다시 조회</button>
+            </div>
+            <div class="ph-bar"><div class="ph-fill" :style="{ width: progressPct + '%' }"></div></div>
+            <div class="ph-count">
+              사진 {{ items.length }}장 중 <b>{{ selectedCount }}장</b> 선택됨
+            </div>
           </div>
-          <div class="ph-bar"><div class="ph-fill" :style="{ width: progressPct + '%' }"></div></div>
-          <div class="ph-count">
-            사진 {{ items.length }}장 중 <b>{{ selectedCount }}장</b> 선택됨
+
+          <div v-if="status.state === 'RETURNED'" class="alert alert-error banner">
+            {{ status.message }}
           </div>
-        </div>
 
-        <div v-if="status.state === 'RETURNED'" class="alert alert-error banner">
-          {{ status.message }}
-        </div>
+          <div class="items">
+            <PhotoUploadCard
+              v-for="(item, idx) in items"
+              :key="item.itemId"
+              :item="item"
+              :index="idx + 1"
+              @select="onSelect"
+              @zoom="lightbox = $event"
+            />
+          </div>
 
-        <div class="items">
-          <PhotoUploadCard
-            v-for="item in items"
-            :key="item.itemId"
-            :item="item"
-            @select="onSelect"
-            @zoom="lightbox = $event"
-          />
-        </div>
+          <div v-if="submitHint" class="alert alert-error" style="margin: 14px 0 0">{{ submitHint }}</div>
+          <div v-if="error" class="alert alert-error" style="margin: 14px 0 0">{{ error }}</div>
 
-        <div v-if="submitHint" class="alert alert-error" style="margin: 14px 0 0">{{ submitHint }}</div>
-        <div v-if="error" class="alert alert-error" style="margin: 14px 0 0">{{ error }}</div>
+          <div class="submit-bar">
+            <p v-if="!allSelected && !submitting" class="bar-hint">
+              사진 {{ items.length - selectedCount }}장이 더 필요해요
+            </p>
+            <button
+              class="btn btn-lg btn-block"
+              :class="{ 'btn-success': allSelected }"
+              :disabled="submitting"
+              @click="submit"
+            >
+              <span v-if="submitting" class="spinner"></span>
+              <span v-else-if="allSelected">전송하기</span>
+              <span v-else>전송 ({{ selectedCount }}/{{ items.length }})</span>
+            </button>
+          </div>
+        </template>
 
-        <div class="submit-bar">
-          <p v-if="!allSelected && !submitting" class="bar-hint">
-            사진 {{ items.length - selectedCount }}장이 더 필요해요
-          </p>
-          <button
-            class="btn btn-lg btn-block"
-            :class="{ 'btn-success': allSelected }"
-            :disabled="submitting"
-            @click="submit"
-          >
-            <span v-if="submitting" class="spinner"></span>
-            <span v-else-if="allSelected">전송하기</span>
-            <span v-else>전송 ({{ selectedCount }}/{{ items.length }})</span>
-          </button>
+        <!-- 이미지 확대 -->
+        <div v-if="lightbox" class="lightbox" @click="lightbox = ''">
+          <img :src="lightbox" alt="확대 이미지" />
+          <p class="lightbox-hint">화면을 누르면 닫혀요</p>
         </div>
       </template>
+    </main>
 
-      <!-- 이미지 확대 -->
-      <div v-if="lightbox" class="lightbox" @click="lightbox = ''">
-        <img :src="lightbox" alt="확대 이미지" />
-        <p class="lightbox-hint">화면을 누르면 닫혀요</p>
-      </div>
-    </template>
+    <footer class="foot muted">
+      기업 요청 사진을 안전하게 제출하는 페이지입니다.
+    </footer>
   </div>
 </template>
 
 <style scoped>
-.wrap {
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 앱바 */
+.appbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.appbar-inner {
   max-width: 560px;
   margin: 0 auto;
-  padding: 16px 16px 60px;
-  font-size: 24px; /* 고객 기본 글자 1.5배 (16 → 24) */
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-/* 입력/버튼도 1.5배로 */
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--primary);
+  flex: 0 0 auto;
+}
+.brand-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  font-size: 24px; /* 고객 기본 글자 1.5배 */
+  flex: 1;
+}
 .wrap .input {
   font-size: 24px;
   padding: 14px 16px;
 }
 .wrap .btn-lg {
-  font-size: 26px;
+  font-size: 25px;
+  padding: 16px 20px;
 }
 .wrap .btn-sm {
-  font-size: 20px;
+  font-size: 19px;
 }
-.topbar {
-  text-align: center;
-  padding: 8px 0 16px;
+
+/* 시작 화면 */
+.hero {
+  padding: 26px 4px 22px;
 }
-.topbar h1 {
-  font-size: 30px;
+.hero h1 {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
 }
-.title {
-  font-size: 27px;
-  margin-bottom: 4px;
-}
-.sub {
-  margin: 0 0 14px;
+.hero-sub {
   font-size: 21px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 0;
 }
-.lookup {
-  margin-top: 10px;
+.lookup-card {
+  padding: 22px 20px;
 }
+.lk-label {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.lk-input {
+  text-align: center;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.privacy {
+  margin: 14px 0 0;
+  font-size: 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* 3단계 절차 */
+.steps {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 30px 0 0;
+  padding: 0;
+}
+.steps li:not(.step-line) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.3;
+}
+.step-no {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.step-line {
+  flex: 0 0 28px;
+  height: 2px;
+  background: var(--border-strong);
+  margin-bottom: 30px;
+}
+
+/* 결과 공통 */
 .company-head {
   display: flex;
   align-items: center;
@@ -253,33 +395,46 @@ async function submit() {
   margin-bottom: 16px;
 }
 .company-name {
-  font-size: 30px;
+  font-size: 29px;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .notice {
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 24px;
 }
 .notice-icon {
-  display: flex;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 .notice-icon.review {
   color: var(--primary);
+  background: var(--primary-soft);
 }
 .notice-icon.done {
   color: var(--success);
+  background: #f0fdf4;
 }
 .notice-msg {
-  font-size: 26px;
-  font-weight: 700;
-  margin: 0 0 6px;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+.notice-sub {
+  font-size: 20px;
+  line-height: 1.55;
+  margin: 0;
 }
 .banner {
   margin: 12px 0 0;
   font-weight: 600;
-  font-size: 22px;
+  font-size: 21px;
 }
 .items {
   display: flex;
@@ -322,7 +477,7 @@ async function submit() {
 }
 .ph-count {
   margin-top: 8px;
-  font-size: 20px;
+  font-size: 19px;
   color: var(--text-muted);
 }
 .ph-count b {
@@ -369,5 +524,12 @@ async function submit() {
   color: rgba(255, 255, 255, 0.8);
   font-size: 19px;
   margin: 0;
+}
+
+/* 푸터 */
+.foot {
+  text-align: center;
+  font-size: 15px;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
 }
 </style>

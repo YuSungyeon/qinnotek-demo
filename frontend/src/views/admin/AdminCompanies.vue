@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi } from '../../api/admin'
 
@@ -8,6 +8,17 @@ const companies = ref([])
 const keyword = ref('')
 const loading = ref(false)
 const error = ref('')
+
+// 현황 요약 (검색 결과 기준)
+const stats = computed(() => {
+  const by = (s) => companies.value.filter((c) => c.status === s).length
+  return [
+    { label: '전체 기업', value: companies.value.length, color: 'var(--text)' },
+    { label: '검수 중', value: by('UNDER_REVIEW'), color: '#2563eb' },
+    { label: '일부 반환', value: by('PARTIALLY_RETURNED'), color: '#dc2626' },
+    { label: '완료', value: by('COMPLETED'), color: '#16a34a' }
+  ]
+})
 
 const showCreate = ref(false)
 const newName = ref('')
@@ -46,8 +57,18 @@ onMounted(load)
 <template>
   <div>
     <div class="page-head">
-      <h1>기업 관리</h1>
+      <div>
+        <h1>기업 관리</h1>
+        <p class="page-sub muted">기업별 사진 제출 현황을 확인하고 관리합니다</p>
+      </div>
       <button class="btn" @click="showCreate = !showCreate">+ 기업 등록</button>
+    </div>
+
+    <div class="stat-grid">
+      <div v-for="s in stats" :key="s.label" class="stat-card">
+        <span class="stat-label">{{ s.label }}</span>
+        <span class="stat-value" :style="{ color: s.color }">{{ s.value }}</span>
+      </div>
     </div>
 
     <div v-if="showCreate" class="card create-box">
@@ -105,6 +126,36 @@ onMounted(load)
 .page-head h1 {
   font-size: 25px;
   font-weight: 800;
+}
+.page-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 .create-box {
   margin-bottom: 16px;

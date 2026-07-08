@@ -4,7 +4,8 @@ import { fileUrl } from '../api/client'
 import Icon from './Icon.vue'
 
 const props = defineProps({
-  item: { type: Object, required: true }
+  item: { type: Object, required: true },
+  index: { type: Number, default: 0 }
 })
 const emit = defineEmits(['select', 'zoom'])
 
@@ -49,6 +50,7 @@ onBeforeUnmount(() => {
     <div class="head">
       <span class="step">
         <Icon v-if="previewUrl" name="check" :size="26" />
+        <template v-else>{{ index || '' }}</template>
       </span>
       <span class="name">{{ item.name }}</span>
       <span class="status-chip" :class="previewUrl ? 'ok' : 'todo'">
@@ -126,12 +128,17 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.photo-card.done .step {
   color: #fff;
-  background: #cbd5e1;
 }
 .photo-card.done .step {
   background: var(--success);
@@ -187,17 +194,18 @@ onBeforeUnmount(() => {
 .thumb {
   position: relative;
   width: 100%;
+  aspect-ratio: 1 / 1; /* 가로·세로 사진 모두 동일한 정사각형 박스에 표시 */
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #f1f5f9;
+  overflow: hidden;
   cursor: pointer;
 }
 .thumb img {
   width: 100%;
-  height: auto;
-  max-height: 240px;
-  object-fit: contain;
-  border-radius: 10px;
-  border: 1px solid var(--border);
+  height: 100%;
+  object-fit: contain; /* 잘리지 않고 전체가 보이도록 */
   display: block;
-  background: #f8fafc;
 }
 .thumb-label {
   position: absolute;

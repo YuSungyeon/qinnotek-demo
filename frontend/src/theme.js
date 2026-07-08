@@ -7,7 +7,7 @@ export const THEMES = {
   indigo: { name: '프리미엄 인디고', primary: '#4f46e5', dark: '#4338ca', soft: '#eef0fe' }
 }
 
-const KR = "'Apple SD Gothic Neo', 'Malgun Gothic'"
+const KR = "'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic'"
 
 // design/*.md 에서 추출한 기업 디자인 토큰
 export const DESIGNS = {
