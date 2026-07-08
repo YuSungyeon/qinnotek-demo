@@ -16,6 +16,9 @@ export const adminApi = {
   updateName(id, name) {
     return client.put(`/api/admin/companies/${id}/name`, { name }).then((r) => r.data)
   },
+  deleteCompany(id) {
+    return client.delete(`/api/admin/companies/${id}`).then((r) => r.data)
+  },
   updatePhone(id, phoneNumber) {
     return client.put(`/api/admin/companies/${id}/phone`, { phoneNumber }).then((r) => r.data)
   },
@@ -75,6 +78,11 @@ export const adminApi = {
   markReturned(itemId, reason) {
     return client
       .post(`/api/admin/submissions/${itemId}/return`, { reason })
+      .then((r) => r.data)
+  },
+  updateItemNote(itemId, note) {
+    return client
+      .put(`/api/admin/submissions/${itemId}/note`, { note })
       .then((r) => r.data)
   }
 }

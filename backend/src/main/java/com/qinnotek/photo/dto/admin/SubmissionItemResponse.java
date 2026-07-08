@@ -14,6 +14,7 @@ public record SubmissionItemResponse(
         String status,
         String statusLabel,
         String rejectReason,
+        String adminNote,
         String photoUrl,
         String originalFileName,
         LocalDateTime uploadedAt
@@ -29,6 +30,7 @@ public record SubmissionItemResponse(
                 item.getStatus().name(),
                 item.getStatus().getLabel(),
                 item.getRejectReason(),
+                item.getAdminNote(),
                 photoUrl,
                 item.getOriginalFileName(),
                 item.getUploadedAt()

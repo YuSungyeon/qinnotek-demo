@@ -69,6 +69,14 @@ public class AdminSubmissionService {
         return SubmissionItemResponse.from(item);
     }
 
+    /** 기업별 추가 설명 저장 (빈 값이면 삭제) */
+    @Transactional
+    public SubmissionItemResponse updateNote(Long itemId, String note) {
+        SubmissionItem item = getItemOrThrow(itemId);
+        item.changeAdminNote(note);
+        return SubmissionItemResponse.from(item);
+    }
+
     private SubmissionItem getItemOrThrow(Long itemId) {
         return submissionItemRepository.findById(itemId)
                 .orElseThrow(() -> BusinessException.notFound("제출 항목을 찾을 수 없습니다."));

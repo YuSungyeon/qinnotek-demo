@@ -60,6 +60,11 @@ onBeforeUnmount(() => {
 
     <p v-if="item.description" class="desc">{{ item.description }}</p>
 
+    <div v-if="item.adminNote" class="admin-note">
+      <strong>요청 사항</strong>
+      <span>{{ item.adminNote }}</span>
+    </div>
+
     <div v-if="item.status === 'RETURNED' && item.rejectReason" class="reject">
       <strong>반환 사유</strong>
       <span>{{ item.rejectReason }}</span>
@@ -169,6 +174,21 @@ onBeforeUnmount(() => {
   font-size: 21px;
   line-height: 1.5;
   color: var(--text-muted);
+}
+.admin-note {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--primary-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  font-size: 21px;
+  line-height: 1.5;
+}
+.admin-note strong {
+  color: var(--primary-dark);
+  font-size: 17px;
 }
 .reject {
   display: flex;

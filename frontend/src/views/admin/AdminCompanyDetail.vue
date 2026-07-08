@@ -29,6 +29,25 @@ const returnReason = ref('')
 const returnConfirmed = ref(false)
 const processing = ref(false)
 
+// 기업명 수정 모달
+const showNameModal = ref(false)
+const nameInput = ref('')
+const savingName = ref(false)
+const nameError = ref('')
+
+// 기업 삭제 모달
+const showDeleteModal = ref(false)
+const deleting = ref(false)
+const deleteError = ref('')
+
+// 요구사진 자세히 모달
+const reqDetail = ref(null)
+
+// 항목별 추가 설명 모달
+const noteTarget = ref(null)
+const noteText = ref('')
+const savingNote = ref(false)
+
 // 이미지 라이트박스
 const lightbox = ref('')
 
@@ -135,6 +154,58 @@ async function refreshSubmissions() {
   company.value = await adminApi.getCompany(companyId.value)
 }
 
+// --- 기업명 수정 ---
+function openNameEdit() {
+  nameInput.value = company.value.name
+  nameError.value = ''
+  showNameModal.value = true
+}
+async function saveName() {
+  if (!nameInput.value.trim()) return
+  savingName.value = true
+  nameError.value = ''
+  try {
+    company.value = await adminApi.updateName(companyId.value, nameInput.value.trim())
+    showNameModal.value = false
+  } catch (err) {
+    nameError.value = err.message
+  } finally {
+    savingName.value = false
+  }
+}
+
+// --- 기업 삭제 ---
+async function confirmDelete() {
+  deleting.value = true
+  deleteError.value = ''
+  try {
+    await adminApi.deleteCompany(companyId.value)
+    router.push('/admin/companies')
+  } catch (err) {
+    deleteError.value = err.message
+    deleting.value = false
+  }
+}
+
+// --- 항목별 추가 설명 ---
+function openNote(item) {
+  noteTarget.value = item
+  noteText.value = item.adminNote || ''
+}
+async function saveNote() {
+  savingNote.value = true
+  error.value = ''
+  try {
+    await adminApi.updateItemNote(noteTarget.value.itemId, noteText.value.trim())
+    noteTarget.value = null
+    await refreshSubmissions()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    savingNote.value = false
+  }
+}
+
 const statusOf = (s) => ({ PENDING: '미제출', SUBMITTED: '검수 대기', APPROVED: '통과', RETURNED: '반환' }[s] || s)
 const statusColor = (s) =>
   ({ PENDING: '#6b7280', SUBMITTED: '#2563eb', APPROVED: '#16a34a', RETURNED: '#dc2626' }[s] || '#6b7280')
@@ -150,6 +221,10 @@ onMounted(loadAll)
     <div class="page-head">
       <h1>{{ company.name }}</h1>
       <span class="badge" :style="{ background: company.statusColor }">{{ company.statusLabel }}</span>
+      <div class="head-actions">
+        <button class="btn btn-ghost btn-sm" @click="openNameEdit">이름 수정</button>
+        <button class="btn btn-danger btn-sm" @click="deleteError = ''; showDeleteModal = true">기업 삭제</button>
+      </div>
     </div>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
@@ -174,14 +249,17 @@ onMounted(loadAll)
           <RouterLink to="/admin/requirements" class="link">요구 사진 관리 →</RouterLink>
         </div>
         <div v-else class="req-list">
-          <label v-for="r in requirements" :key="r.id" class="req-item">
-            <input
-              type="checkbox"
-              :checked="selectedReqIds.includes(r.id)"
-              @change="toggleReq(r.id)"
-            />
-            <span>{{ r.name }}</span>
-          </label>
+          <div v-for="r in requirements" :key="r.id" class="req-item">
+            <label class="req-check">
+              <input
+                type="checkbox"
+                :checked="selectedReqIds.includes(r.id)"
+                @change="toggleReq(r.id)"
+              />
+              <span>{{ r.name }}</span>
+            </label>
+            <button class="detail-link" @click="reqDetail = r">자세히</button>
+          </div>
         </div>
         <div class="save-row">
           <button class="btn" :disabled="savingReq" @click="saveRequirements">지정 저장</button>
@@ -224,6 +302,10 @@ onMounted(loadAll)
             반환 사유: {{ item.rejectReason }}
           </div>
 
+          <div v-if="item.adminNote" class="admin-note">
+            <strong>추가 설명</strong> {{ item.adminNote }}
+          </div>
+
           <div class="sub-actions" v-if="item.status === 'SUBMITTED'">
             <button class="btn btn-success btn-sm" :disabled="processing" @click="approve(item)">통과</button>
             <button class="btn btn-danger btn-sm" :disabled="processing" @click="openReturn(item)">반환</button>
@@ -231,6 +313,10 @@ onMounted(loadAll)
           <div v-else class="sub-actions muted small">
             {{ item.status === 'APPROVED' ? '승인 완료' : item.status === 'RETURNED' ? '고객 재제출 대기' : '고객 제출 대기' }}
           </div>
+
+          <button class="btn btn-ghost btn-sm note-btn" @click="openNote(item)">
+            {{ item.adminNote ? '추가 설명 수정' : '추가 설명 작성' }}
+          </button>
         </div>
       </div>
     </section>
@@ -265,6 +351,72 @@ onMounted(loadAll)
       </div>
     </div>
 
+    <!-- 기업명 수정 모달 -->
+    <div v-if="showNameModal" class="modal-mask" @click.self="showNameModal = false">
+      <div class="modal">
+        <h3>기업명 수정</h3>
+        <label class="label">기업명 (중복 불가)</label>
+        <input v-model="nameInput" class="input" @keyup.enter="saveName" />
+        <div v-if="nameError" class="alert alert-error" style="margin-top: 12px">{{ nameError }}</div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="showNameModal = false">취소</button>
+          <button class="btn" :disabled="savingName || !nameInput.trim()" @click="saveName">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기업 삭제 모달 -->
+    <div v-if="showDeleteModal" class="modal-mask" @click.self="showDeleteModal = false">
+      <div class="modal">
+        <h3>기업 삭제</h3>
+        <p class="disp-name">{{ company.name }}</p>
+        <div class="warn">
+          ⚠ 삭제하면 이 기업의 제출 항목과 업로드된 사진이 모두 삭제되며 되돌릴 수 없습니다.
+        </div>
+        <div v-if="deleteError" class="alert alert-error" style="margin-top: 12px">{{ deleteError }}</div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="showDeleteModal = false">취소</button>
+          <button class="btn btn-danger" :disabled="deleting" @click="confirmDelete">삭제하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 요구사진 자세히 모달 -->
+    <div v-if="reqDetail" class="modal-mask" @click.self="reqDetail = null">
+      <div class="modal">
+        <h3>{{ reqDetail.name }}</h3>
+        <div class="req-detail-img" :class="{ empty: !reqDetail.exampleImageUrl }">
+          <img v-if="reqDetail.exampleImageUrl" :src="fileUrl(reqDetail.exampleImageUrl)" alt="예시 이미지" />
+          <span v-else class="muted">예시 이미지 없음</span>
+        </div>
+        <label class="label" style="margin-top: 14px">설명</label>
+        <p class="req-detail-desc">{{ reqDetail.description || '설명 없음' }}</p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="reqDetail = null">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 항목별 추가 설명 모달 -->
+    <div v-if="noteTarget" class="modal-mask" @click.self="noteTarget = null">
+      <div class="modal">
+        <h3>추가 설명</h3>
+        <p class="disp-name">{{ noteTarget.displayName }}</p>
+        <label class="label">이 기업에만 표시할 추가 안내 (비우면 삭제)</label>
+        <textarea
+          v-model="noteText"
+          class="input"
+          rows="3"
+          placeholder="예: 오후 2시 이전, 간판 조명 켜진 상태로 촬영해주세요."
+        ></textarea>
+        <p class="muted small" style="margin: 10px 0 0">고객 화면에서 기본 설명과 함께 표시됩니다.</p>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="noteTarget = null">취소</button>
+          <button class="btn" :disabled="savingNote" @click="saveNote">저장</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 이미지 라이트박스 -->
     <div v-if="lightbox" class="modal-mask" @click="lightbox = ''">
       <img :src="lightbox" class="lightbox-img" alt="확대 이미지" />
@@ -285,6 +437,11 @@ onMounted(loadAll)
 .page-head h1 {
   font-size: 25px;
   font-weight: 800;
+}
+.head-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
 }
 .grid {
   display: grid;
@@ -325,13 +482,34 @@ onMounted(loadAll)
 .req-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.req-check {
+  display: flex;
+  align-items: center;
   gap: 10px;
   font-size: 15px;
   cursor: pointer;
+  flex: 1;
+  min-width: 0;
 }
-.req-item input {
+.req-check input {
   width: 18px;
   height: 18px;
+}
+.detail-link {
+  border: none;
+  background: none;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.detail-link:hover {
+  text-decoration: underline;
 }
 .save-row {
   display: flex;
@@ -425,6 +603,45 @@ onMounted(loadAll)
   background: var(--danger-bg);
   padding: 6px 8px;
   border-radius: 6px;
+}
+.admin-note {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+  padding: 6px 8px;
+  border-radius: 6px;
+  word-break: break-all;
+}
+.admin-note strong {
+  font-size: 12px;
+  margin-right: 4px;
+}
+.note-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+.req-detail-img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #f1f5f9;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.req-detail-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.req-detail-desc {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 .sub-actions {
   display: flex;

@@ -55,4 +55,14 @@ public class AdminSubmissionController {
                                                @Valid @RequestBody ReturnRequest request) {
         return submissionService.markReturned(itemId, request.reason());
     }
+
+    public record NoteRequest(String note) {
+    }
+
+    @Operation(summary = "기업별 추가 설명 저장", description = "해당 항목에 관리자 추가 설명 저장(빈 값이면 삭제). 고객 화면에 표시됨")
+    @PutMapping("/submissions/{itemId}/note")
+    public SubmissionItemResponse updateNote(@PathVariable Long itemId,
+                                             @RequestBody NoteRequest request) {
+        return submissionService.updateNote(itemId, request.note());
+    }
 }

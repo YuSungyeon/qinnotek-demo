@@ -58,15 +58,33 @@ public class CompanyService {
 
     @Transactional
     public CompanyDetailResponse create(String name) {
-        Company saved = companyRepository.save(new Company(name));
+        String trimmed = name.trim();
+        if (companyRepository.existsByName(trimmed)) {
+            throw BusinessException.conflict("이미 등록된 기업명입니다: " + trimmed);
+        }
+        Company saved = companyRepository.save(new Company(trimmed));
         return CompanyDetailResponse.of(saved, CompanyStatus.NONE, List.of());
     }
 
     @Transactional
     public CompanyDetailResponse updateName(Long id, String name) {
         Company company = getOrThrow(id);
-        company.changeName(name);
+        String trimmed = name.trim();
+        if (!company.getName().equals(trimmed) && companyRepository.existsByName(trimmed)) {
+            throw BusinessException.conflict("이미 등록된 기업명입니다: " + trimmed);
+        }
+        company.changeName(trimmed);
         return getDetail(id);
+    }
+
+    /** 기업 삭제 - 제출 항목과 업로드 파일도 함께 삭제 */
+    @Transactional
+    public void delete(Long id) {
+        Company company = getOrThrow(id);
+        List<SubmissionItem> items = submissionItemRepository.findByCompanyId(id);
+        items.forEach(i -> fileStorageService.delete(i.getStoredFileName()));
+        submissionItemRepository.deleteAll(items);
+        companyRepository.delete(company);
     }
 
     @Transactional

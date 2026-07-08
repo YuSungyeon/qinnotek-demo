@@ -18,7 +18,8 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    /** 기업명 (중복 불가) */
+    @Column(nullable = false, unique = true)
     private String name;
 
     /** 기업당 1개, 미등록 시 null */

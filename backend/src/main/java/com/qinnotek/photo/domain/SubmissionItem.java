@@ -40,6 +40,10 @@ public class SubmissionItem {
     @Column(length = 1000)
     private String rejectReason;
 
+    /** 기업별 추가 설명 (관리자 작성, 고객 화면에 기본 설명과 함께 표시) */
+    @Column(length = 1000)
+    private String adminNote;
+
     // --- 최신 제출본 정보 (항상 최신 1장만 유지) ---
     /** 저장 파일명(UUID) */
     private String storedFileName;
@@ -83,6 +87,11 @@ public class SubmissionItem {
         this.originalFileName = null;
         this.storagePath = null;
         this.uploadedAt = null;
+    }
+
+    /** 기업별 추가 설명 저장/삭제 */
+    public void changeAdminNote(String note) {
+        this.adminNote = (note == null || note.isBlank()) ? null : note.trim();
     }
 
     public boolean hasPhoto() {

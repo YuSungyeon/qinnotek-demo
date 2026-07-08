@@ -45,6 +45,12 @@ public class AdminCompanyController {
         return companyService.updateName(id, request.name());
     }
 
+    @Operation(summary = "기업 삭제", description = "제출 항목과 업로드 사진도 함께 삭제")
+    @DeleteMapping("/{id}")
+    public void delete(@PathVariable Long id) {
+        companyService.delete(id);
+    }
+
     @Operation(summary = "전화번호 등록/수정", description = "기업당 1개, 중복 불가")
     @PutMapping("/{id}/phone")
     public CompanyDetailResponse updatePhone(@PathVariable Long id,

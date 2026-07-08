@@ -7,12 +7,14 @@ const list = ref([])
 const loading = ref(true)
 const error = ref('')
 
-// 등록/수정 폼
+// 등록/수정 모달
+const showModal = ref(false)
 const editing = ref(null) // null=새로등록, 객체=수정
 const form = ref({ name: '', description: '' })
 const file = ref(null)
 const fileInput = ref(null)
 const saving = ref(false)
+const modalError = ref('')
 
 async function load() {
   loading.value = true
@@ -26,19 +28,25 @@ async function load() {
   }
 }
 
-function resetForm() {
+function openCreate() {
   editing.value = null
   form.value = { name: '', description: '' }
   file.value = null
-  if (fileInput.value) fileInput.value.value = ''
+  modalError.value = ''
+  showModal.value = true
 }
 
-function startEdit(r) {
+function openEdit(r) {
   editing.value = r
   form.value = { name: r.name, description: r.description || '' }
   file.value = null
+  modalError.value = ''
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
   if (fileInput.value) fileInput.value.value = ''
-  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 function onFile(e) {
@@ -46,9 +54,12 @@ function onFile(e) {
 }
 
 async function save() {
-  if (!form.value.name.trim()) return
+  if (!form.value.name.trim()) {
+    modalError.value = '사진 명칭을 입력해주세요.'
+    return
+  }
   saving.value = true
-  error.value = ''
+  modalError.value = ''
   try {
     const payload = {
       name: form.value.name.trim(),
@@ -60,10 +71,10 @@ async function save() {
     } else {
       await adminApi.createRequirement(payload)
     }
-    resetForm()
+    closeModal()
     await load()
   } catch (err) {
-    error.value = err.message
+    modalError.value = err.message
   } finally {
     saving.value = false
   }
@@ -74,7 +85,6 @@ async function remove(r) {
   error.value = ''
   try {
     await adminApi.deleteRequirement(r.id)
-    if (editing.value?.id === r.id) resetForm()
     await load()
   } catch (err) {
     error.value = err.message
@@ -86,35 +96,15 @@ onMounted(load)
 
 <template>
   <div>
-    <div class="page-head"><h1>요구 사진 관리</h1></div>
-    <p class="muted" style="margin-top: -8px; margin-bottom: 18px">
-      기업에 지정할 수 있는 사진 항목을 등록합니다. 사진 명칭은 중복될 수 없습니다.
-    </p>
+    <div class="page-head">
+      <div>
+        <h1>요구 사진 관리</h1>
+        <p class="page-sub muted">기업에 지정할 수 있는 사진 항목을 등록합니다. 사진 명칭은 중복될 수 없습니다.</p>
+      </div>
+      <button class="btn" @click="openCreate">+ 요구 사진 등록</button>
+    </div>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
-
-    <!-- 등록/수정 폼 -->
-    <section class="card form-card">
-      <h2 class="ctitle">{{ editing ? '요구 사진 수정' : '요구 사진 등록' }}</h2>
-      <div class="fields">
-        <div>
-          <label class="label">사진 명칭 *</label>
-          <input v-model="form.name" class="input" placeholder="예: 건물 정면" />
-        </div>
-        <div>
-          <label class="label">설명</label>
-          <input v-model="form.description" class="input" placeholder="촬영 안내 문구" />
-        </div>
-        <div>
-          <label class="label">예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}</label>
-          <input ref="fileInput" type="file" accept="image/*" @change="onFile" />
-        </div>
-      </div>
-      <div class="form-actions">
-        <button v-if="editing" class="btn btn-ghost" @click="resetForm">취소</button>
-        <button class="btn" :disabled="saving" @click="save">{{ editing ? '수정 저장' : '등록' }}</button>
-      </div>
-    </section>
 
     <!-- 목록 -->
     <div v-if="loading" class="muted">불러오는 중…</div>
@@ -129,46 +119,66 @@ onMounted(load)
           <div class="req-desc muted">{{ r.description || '설명 없음' }}</div>
         </div>
         <div class="req-actions">
-          <button class="btn btn-ghost btn-sm" @click="startEdit(r)">수정</button>
+          <button class="btn btn-ghost btn-sm" @click="openEdit(r)">수정</button>
           <button class="btn btn-danger btn-sm" @click="remove(r)">삭제</button>
         </div>
       </div>
       <div v-if="list.length === 0" class="muted">등록된 요구 사진이 없습니다.</div>
     </div>
+
+    <!-- 등록/수정 모달 -->
+    <div v-if="showModal" class="modal-mask" @click.self="closeModal">
+      <div class="modal">
+        <h3>{{ editing ? '요구 사진 수정' : '요구 사진 등록' }}</h3>
+
+        <label class="label">사진 명칭 *</label>
+        <input v-model="form.name" class="input" placeholder="예: 건물 정면" />
+
+        <label class="label" style="margin-top: 14px">설명</label>
+        <textarea
+          v-model="form.description"
+          class="input"
+          rows="3"
+          placeholder="고객에게 보여줄 촬영 안내 문구"
+        ></textarea>
+
+        <label class="label" style="margin-top: 14px">
+          예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}
+        </label>
+        <div v-if="editing?.exampleImageUrl && !file" class="cur-example">
+          <img :src="fileUrl(editing.exampleImageUrl)" alt="현재 예시" />
+          <span class="muted" style="font-size: 13px">현재 등록된 예시</span>
+        </div>
+        <input ref="fileInput" type="file" accept="image/*" @change="onFile" />
+
+        <div v-if="modalError" class="alert alert-error" style="margin-top: 14px">{{ modalError }}</div>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="closeModal">취소</button>
+          <button class="btn" :disabled="saving" @click="save">
+            {{ editing ? '수정 저장' : '등록' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
 .page-head h1 {
   font-size: 25px;
   font-weight: 800;
-  margin-bottom: 6px;
 }
-.ctitle {
-  font-size: 16px;
-  margin-bottom: 14px;
-}
-.form-card {
-  margin-bottom: 24px;
-}
-.fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-.fields > div:last-child {
-  grid-column: 1 / -1;
-}
-@media (max-width: 640px) {
-  .fields {
-    grid-template-columns: 1fr;
-  }
-}
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+.page-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
 }
 .req-grid {
   display: grid;
@@ -221,5 +231,50 @@ onMounted(load)
   display: flex;
   gap: 8px;
   padding: 0 14px 14px;
+}
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.modal {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 22px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.modal h3 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.modal textarea {
+  resize: vertical;
+}
+.cur-example {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cur-example img {
+  width: 72px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
 }
 </style>
