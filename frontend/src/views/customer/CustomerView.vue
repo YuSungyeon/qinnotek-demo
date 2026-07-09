@@ -2,6 +2,7 @@
 import { computed, nextTick, reactive, ref } from 'vue'
 import { customerApi } from '../../api/customer'
 import { classifyToSlots, loadClassifier } from '../../lib/classifier'
+import { compressImage } from '../../lib/resize'
 import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
 import Icon from '../../components/Icon.vue'
 
@@ -9,6 +10,7 @@ const phone = ref('')
 const status = ref(null) // lookup 결과
 const loading = ref(false)
 const submitting = ref(false)
+const uploadStatus = ref('') // 전송 진행 문구 (압축/업로드 %)
 const error = ref('')
 const submitHint = ref('')
 const lightbox = ref('') // 확대 이미지 URL
@@ -198,10 +200,35 @@ async function submit() {
   submitting.value = true
   error.value = ''
   try {
-    // 전송 시 한 번에 업로드 → 제출
+    // 1) 업로드 전 압축 (긴 변 1920px, JPEG 85% — 전송량 대폭 절감)
+    const prepared = {}
+    let done = 0
+    for (const i of items.value) {
+      uploadStatus.value = `사진 최적화 중 (${++done}/${items.value.length})`
+      prepared[i.itemId] = await compressImage(selectedFiles[i.itemId])
+    }
+
+    // 2) 병렬 업로드 + 전체 진행률
+    const totals = {}
+    const loadeds = {}
+    const refresh = () => {
+      const t = Object.values(totals).reduce((a, b) => a + b, 0)
+      const l = Object.values(loadeds).reduce((a, b) => a + b, 0)
+      uploadStatus.value = t > 0 ? `전송 중 ${Math.min(99, Math.round((l / t) * 100))}%` : '전송 중…'
+    }
+    refresh()
     await Promise.all(
-      items.value.map((i) => customerApi.uploadPhoto(i.itemId, selectedFiles[i.itemId]))
+      items.value.map((i) =>
+        customerApi.uploadPhoto(i.itemId, prepared[i.itemId], (e) => {
+          totals[i.itemId] = e.total || 0
+          loadeds[i.itemId] = e.loaded || 0
+          refresh()
+        })
+      )
     )
+
+    // 3) 제출 확정
+    uploadStatus.value = '제출 처리 중…'
     status.value = await customerApi.submit(status.value.companyId)
     clearSelected()
     window.scrollTo({ top: 0 })
@@ -209,6 +236,7 @@ async function submit() {
     error.value = err.message
   } finally {
     submitting.value = false
+    uploadStatus.value = ''
   }
 }
 </script>
@@ -381,6 +409,13 @@ async function submit() {
           <span class="spinner big"></span>
           <p class="lightbox-hint">{{ classifyStatus }}</p>
           <p class="lightbox-hint dim">사진은 기기 안에서만 처리되고 아직 전송되지 않아요</p>
+        </div>
+
+        <!-- 전송 진행 오버레이 -->
+        <div v-if="submitting" class="lightbox classify-overlay">
+          <span class="spinner big"></span>
+          <p class="lightbox-hint">{{ uploadStatus || '전송 준비 중…' }}</p>
+          <p class="lightbox-hint dim">화면을 닫지 말고 잠시만 기다려주세요</p>
         </div>
 
         <!-- 이미지 확대 -->
