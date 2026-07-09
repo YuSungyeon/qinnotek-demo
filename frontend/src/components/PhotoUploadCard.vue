@@ -7,9 +7,13 @@ const props = defineProps({
   item: { type: Object, required: true },
   index: { type: Number, default: 0 },
   /** 선택된 파일 (부모 관리 - 직접 선택/자동 분류 모두 이 prop으로 반영) */
-  file: { type: File, default: null }
+  file: { type: File, default: null },
+  /** AI 자동 배정 여부 (확인 필요 표시) */
+  auto: { type: Boolean, default: false },
+  /** 위치 바꾸기 버튼 노출 여부 (항목이 2개 이상일 때) */
+  swappable: { type: Boolean, default: false }
 })
-const emit = defineEmits(['select', 'zoom'])
+const emit = defineEmits(['select', 'zoom', 'swap'])
 
 const cameraInput = ref(null)
 const galleryInput = ref(null)
@@ -63,8 +67,8 @@ onBeforeUnmount(() => {
         <template v-else>{{ index || '' }}</template>
       </span>
       <span class="name">{{ item.name }}</span>
-      <span class="status-chip" :class="previewUrl ? 'ok' : 'todo'">
-        {{ previewUrl ? '완료' : '필요' }}
+      <span class="status-chip" :class="previewUrl ? (auto ? 'ai' : 'ok') : 'todo'">
+        {{ previewUrl ? (auto ? 'AI 배정' : '완료') : '필요' }}
       </span>
     </div>
 
@@ -95,6 +99,14 @@ onBeforeUnmount(() => {
     <div v-if="error" class="alert alert-error" style="margin-bottom: 10px">{{ error }}</div>
 
     <div class="actions">
+      <button
+        v-if="previewUrl && swappable"
+        class="btn btn-ghost tap-btn swap-btn"
+        @click="emit('swap', item.itemId)"
+      >
+        <Icon name="swap" :size="22" />
+        <span>위치 바꾸기</span>
+      </button>
       <button class="btn btn-ghost tap-btn" @click="pickCamera">
         <Icon name="camera" :size="22" />
         <span>{{ previewUrl ? '다시 촬영' : '카메라 촬영' }}</span>
@@ -179,6 +191,10 @@ onBeforeUnmount(() => {
   color: var(--text-muted);
   background: #f1f5f9;
 }
+.status-chip.ai {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+}
 .desc {
   margin: 0 0 12px;
   font-size: 21px;
@@ -253,6 +269,7 @@ onBeforeUnmount(() => {
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .tap-btn {
@@ -262,5 +279,14 @@ onBeforeUnmount(() => {
   padding: 14px 8px;
   font-size: 19px;
   border-radius: 12px;
+}
+/* 위치 바꾸기: 한 줄 전체 차지, 강조 */
+.swap-btn {
+  flex: 1 1 100%;
+  flex-direction: row;
+  padding: 12px 8px;
+  color: var(--primary-dark);
+  border-color: var(--primary);
+  background: var(--primary-soft);
 }
 </style>

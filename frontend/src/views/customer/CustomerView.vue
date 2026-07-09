@@ -15,6 +15,8 @@ const lightbox = ref('') // 확대 이미지 URL
 
 // 전송 전까지 로컬에 보관하는 선택 파일 (itemId -> File)
 const selectedFiles = reactive({})
+// AI가 자동 배정한 항목 (itemId -> true). 직접 선택/이동하면 해제
+const autoAssigned = reactive({})
 
 const items = computed(() => status.value?.items ?? [])
 const selectedCount = computed(() => items.value.filter((i) => selectedFiles[i.itemId]).length)
@@ -39,6 +41,7 @@ function onPhoneInput(e) {
 
 function clearSelected() {
   Object.keys(selectedFiles).forEach((k) => delete selectedFiles[k])
+  Object.keys(autoAssigned).forEach((k) => delete autoAssigned[k])
 }
 
 function scrollToItem(itemId, block = 'center') {
@@ -103,6 +106,7 @@ async function onBulkFiles(e) {
     })
     assigned.forEach(({ itemId, file }) => {
       selectedFiles[itemId] = file
+      autoAssigned[itemId] = true
     })
     submitHint.value = ''
     autoMsg.value = `사진 ${assigned.length}장을 자동으로 분류했어요. 각 항목이 맞는지 확인해주세요.`
@@ -115,8 +119,59 @@ async function onBulkFiles(e) {
   }
 }
 
+/** AI 자동 배정 전체 취소 (직접 고른 사진은 유지) */
+function undoAuto() {
+  Object.keys(autoAssigned).forEach((k) => {
+    delete selectedFiles[k]
+    delete autoAssigned[k]
+  })
+  autoMsg.value = ''
+}
+
+// --- 위치 바꾸기 (이동/교환) ---
+const swapSource = ref(null) // 이동할 사진이 있는 itemId
+const swapRows = ref([]) // [{itemId, name, hasFile, thumb}]
+
+function openSwap(itemId) {
+  swapSource.value = itemId
+  swapRows.value = items.value
+    .filter((i) => i.itemId !== itemId)
+    .map((i) => {
+      const f = selectedFiles[i.itemId]
+      return {
+        itemId: i.itemId,
+        name: i.name,
+        hasFile: !!f,
+        thumb: f ? URL.createObjectURL(f) : null
+      }
+    })
+}
+
+function closeSwap() {
+  swapRows.value.forEach((r) => r.thumb && URL.revokeObjectURL(r.thumb))
+  swapRows.value = []
+  swapSource.value = null
+}
+
+/** 목적지에 사진이 있으면 교환, 없으면 이동 */
+function doSwap(targetId) {
+  const src = swapSource.value
+  const a = selectedFiles[src] || null
+  const b = selectedFiles[targetId] || null
+  if (b) selectedFiles[src] = b
+  else delete selectedFiles[src]
+  if (a) selectedFiles[targetId] = a
+  else delete selectedFiles[targetId]
+  // 사용자가 직접 배치했으므로 두 항목 모두 AI 표시 해제
+  delete autoAssigned[src]
+  delete autoAssigned[targetId]
+  submitHint.value = ''
+  closeSwap()
+}
+
 function onSelect({ itemId, file }) {
   selectedFiles[itemId] = file
+  delete autoAssigned[itemId] // 직접 선택 → AI 표시 해제
   submitHint.value = ''
   // 다음 미선택 항목으로 부드럽게 이동 (없으면 전송 바로)
   nextTick(() => {
@@ -260,7 +315,10 @@ async function submit() {
           </button>
           <input ref="bulkInput" type="file" accept="image/*" multiple hidden @change="onBulkFiles" />
 
-          <div v-if="autoMsg" class="alert alert-info" style="margin-top: 12px">{{ autoMsg }}</div>
+          <div v-if="autoMsg" class="alert alert-info auto-banner">
+            <span>{{ autoMsg }}</span>
+            <button class="undo-link" @click="undoAuto">모두 지우기</button>
+          </div>
 
           <div class="items">
             <PhotoUploadCard
@@ -269,7 +327,10 @@ async function submit() {
               :item="item"
               :index="idx + 1"
               :file="selectedFiles[item.itemId] || null"
+              :auto="!!autoAssigned[item.itemId]"
+              :swappable="items.length > 1"
               @select="onSelect"
+              @swap="openSwap"
               @zoom="lightbox = $event"
             />
           </div>
@@ -293,6 +354,25 @@ async function submit() {
             </button>
           </div>
         </template>
+
+        <!-- 위치 바꾸기 바텀시트 -->
+        <div v-if="swapSource" class="sheet-mask" @click.self="closeSwap">
+          <div class="sheet">
+            <p class="sheet-title">이 사진을 어디로 옮길까요?</p>
+            <button v-for="row in swapRows" :key="row.itemId" class="sheet-row" @click="doSwap(row.itemId)">
+              <span class="sheet-thumb">
+                <img v-if="row.thumb" :src="row.thumb" alt="" />
+                <Icon v-else name="image" :size="24" />
+              </span>
+              <span class="sheet-info">
+                <b>{{ row.name }}</b>
+                <small>{{ row.hasFile ? '사진 있음 → 서로 교환' : '비어 있음 → 이동' }}</small>
+              </span>
+              <Icon :name="row.hasFile ? 'swap' : 'arrowRight'" :size="22" class="sheet-arrow" />
+            </button>
+            <button class="btn btn-ghost btn-block sheet-cancel" @click="closeSwap">취소</button>
+          </div>
+        </div>
 
         <!-- 자동 분류 진행 오버레이 -->
         <div v-if="classifying" class="lightbox classify-overlay">
@@ -541,6 +621,109 @@ async function submit() {
   width: 44px;
   height: 44px;
   border-width: 5px;
+}
+
+/* 자동 분류 배너 + 실행취소 */
+.auto-banner {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 19px;
+}
+.undo-link {
+  border: none;
+  background: none;
+  padding: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  text-decoration: underline;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* 위치 바꾸기 바텀시트 */
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet {
+  width: 100%;
+  max-width: 560px;
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 14px;
+}
+.sheet-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+.sheet-row:active {
+  background: var(--primary-soft);
+}
+.sheet-thumb {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  overflow: hidden;
+}
+.sheet-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sheet-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sheet-info b {
+  font-size: 21px;
+  font-weight: 700;
+}
+.sheet-info small {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+.sheet-arrow {
+  color: var(--primary);
+  flex: 0 0 auto;
+}
+.sheet-cancel {
+  margin-top: 4px;
+  font-size: 20px;
 }
 .lightbox-hint.dim {
   font-size: 16px;
