@@ -32,10 +32,11 @@ export const adminApi = {
   listRequirements() {
     return client.get('/api/admin/requirements').then((r) => r.data)
   },
-  createRequirement({ name, description, exampleImage }) {
+  createRequirement({ name, description, classificationHint, exampleImage }) {
     const form = new FormData()
     form.append('name', name)
     if (description) form.append('description', description)
+    if (classificationHint) form.append('classificationHint', classificationHint)
     if (exampleImage) form.append('exampleImage', exampleImage)
     return client
       .post('/api/admin/requirements', form, {
@@ -43,10 +44,11 @@ export const adminApi = {
       })
       .then((r) => r.data)
   },
-  updateRequirement(id, { name, description, exampleImage }) {
+  updateRequirement(id, { name, description, classificationHint, exampleImage }) {
     const form = new FormData()
     form.append('name', name)
     if (description) form.append('description', description)
+    if (classificationHint) form.append('classificationHint', classificationHint)
     if (exampleImage) form.append('exampleImage', exampleImage)
     return client
       .put(`/api/admin/requirements/${id}`, form, {

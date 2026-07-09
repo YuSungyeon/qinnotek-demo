@@ -36,7 +36,8 @@ public class PhotoRequirementService {
     }
 
     @Transactional
-    public RequirementResponse create(String name, String description, MultipartFile exampleImage) {
+    public RequirementResponse create(String name, String description, String classificationHint,
+                                      MultipartFile exampleImage) {
         if (requirementRepository.existsByName(name)) {
             throw BusinessException.conflict("이미 존재하는 사진 명칭입니다: " + name);
         }
@@ -45,17 +46,18 @@ public class PhotoRequirementService {
             exampleFileName = fileStorageService.store(exampleImage).storedFileName();
         }
         PhotoRequirement saved = requirementRepository.save(
-                new PhotoRequirement(name, description, exampleFileName));
+                new PhotoRequirement(name, description, classificationHint, exampleFileName));
         return RequirementResponse.from(saved);
     }
 
     @Transactional
-    public RequirementResponse update(Long id, String name, String description, MultipartFile exampleImage) {
+    public RequirementResponse update(Long id, String name, String description, String classificationHint,
+                                      MultipartFile exampleImage) {
         PhotoRequirement req = getOrThrow(id);
         if (!req.getName().equals(name) && requirementRepository.existsByName(name)) {
             throw BusinessException.conflict("이미 존재하는 사진 명칭입니다: " + name);
         }
-        req.update(name, description);
+        req.update(name, description, classificationHint);
         if (exampleImage != null && !exampleImage.isEmpty()) {
             String old = req.getExampleImageFileName();
             String newFile = fileStorageService.store(exampleImage).storedFileName();

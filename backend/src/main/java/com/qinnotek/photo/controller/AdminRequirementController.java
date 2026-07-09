@@ -24,12 +24,13 @@ public class AdminRequirementController {
         return requirementService.findAll();
     }
 
-    @Operation(summary = "요구 사진 등록", description = "사진 명칭(중복 불가), 설명, 예시 이미지")
+    @Operation(summary = "요구 사진 등록", description = "사진 명칭(중복 불가), 설명, AI 분류 힌트(영문), 예시 이미지")
     @PostMapping(consumes = "multipart/form-data")
     public RequirementResponse create(@RequestParam String name,
                                       @RequestParam(required = false) String description,
+                                      @RequestParam(required = false) String classificationHint,
                                       @RequestParam(required = false) MultipartFile exampleImage) {
-        return requirementService.create(name, description, exampleImage);
+        return requirementService.create(name, description, classificationHint, exampleImage);
     }
 
     @Operation(summary = "요구 사진 수정")
@@ -37,8 +38,9 @@ public class AdminRequirementController {
     public RequirementResponse update(@PathVariable Long id,
                                       @RequestParam String name,
                                       @RequestParam(required = false) String description,
+                                      @RequestParam(required = false) String classificationHint,
                                       @RequestParam(required = false) MultipartFile exampleImage) {
-        return requirementService.update(id, name, description, exampleImage);
+        return requirementService.update(id, name, description, classificationHint, exampleImage);
     }
 
     @Operation(summary = "요구 사진 삭제", description = "기업에 지정되지 않은 경우에만 삭제 가능")

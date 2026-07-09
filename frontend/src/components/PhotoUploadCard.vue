@@ -1,11 +1,13 @@
 <script setup>
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import { fileUrl } from '../api/client'
 import Icon from './Icon.vue'
 
 const props = defineProps({
   item: { type: Object, required: true },
-  index: { type: Number, default: 0 }
+  index: { type: Number, default: 0 },
+  /** 선택된 파일 (부모 관리 - 직접 선택/자동 분류 모두 이 prop으로 반영) */
+  file: { type: File, default: null }
 })
 const emit = defineEmits(['select', 'zoom'])
 
@@ -13,6 +15,16 @@ const cameraInput = ref(null)
 const galleryInput = ref(null)
 const previewUrl = ref('')
 const error = ref('')
+
+// file prop → 미리보기 URL 동기화
+watch(
+  () => props.file,
+  (f) => {
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+    previewUrl.value = f ? URL.createObjectURL(f) : ''
+  },
+  { immediate: true }
+)
 
 function pickCamera() {
   cameraInput.value?.click()
@@ -30,8 +42,6 @@ function onFileChange(e) {
     return
   }
   error.value = ''
-  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = URL.createObjectURL(file)
   // 즉시 업로드하지 않고 선택된 파일만 부모로 전달 (전송 시 일괄 업로드)
   emit('select', { itemId: props.item.itemId, file })
 }

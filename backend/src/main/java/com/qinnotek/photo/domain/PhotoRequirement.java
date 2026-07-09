@@ -27,18 +27,28 @@ public class PhotoRequirement {
     @Column(length = 1000)
     private String description;
 
+    /** AI 자동 분류용 영문 힌트 (예: building exterior). null 허용 */
+    @Column(length = 200)
+    private String classificationHint;
+
     /** 예시 이미지 저장 파일명(UUID). null 허용 */
     private String exampleImageFileName;
 
-    public PhotoRequirement(String name, String description, String exampleImageFileName) {
+    public PhotoRequirement(String name, String description, String classificationHint, String exampleImageFileName) {
         this.name = name;
         this.description = description;
+        this.classificationHint = normalizeHint(classificationHint);
         this.exampleImageFileName = exampleImageFileName;
     }
 
-    public void update(String name, String description) {
+    public void update(String name, String description, String classificationHint) {
         this.name = name;
         this.description = description;
+        this.classificationHint = normalizeHint(classificationHint);
+    }
+
+    private static String normalizeHint(String hint) {
+        return (hint == null || hint.isBlank()) ? null : hint.trim();
     }
 
     public void changeExampleImage(String exampleImageFileName) {

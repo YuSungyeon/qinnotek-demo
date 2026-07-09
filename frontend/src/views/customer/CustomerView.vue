@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 import { customerApi } from '../../api/customer'
+import { classifyToSlots, loadClassifier } from '../../lib/classifier'
 import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
 import Icon from '../../components/Icon.vue'
 
@@ -66,6 +67,52 @@ function reset() {
   error.value = ''
   submitHint.value = ''
   clearSelected()
+}
+
+// --- 사진 한번에 올리기 (온디바이스 자동 분류) ---
+const bulkInput = ref(null)
+const classifying = ref(false)
+const classifyStatus = ref('') // 진행 문구
+const autoMsg = ref('') // 완료 배너
+
+function pickBulk() {
+  bulkInput.value?.click()
+}
+
+async function onBulkFiles(e) {
+  const files = [...(e.target.files || [])].filter((f) => f.type.startsWith('image/'))
+  e.target.value = ''
+  if (!files.length) return
+
+  // 아직 선택 안 된 슬롯에만 배정 (직접 고른 사진은 유지)
+  const slots = items.value
+    .filter((i) => !selectedFiles[i.itemId])
+    .map((i) => ({ itemId: i.itemId, label: i.classificationHint || i.name }))
+  if (!slots.length) return
+
+  classifying.value = true
+  autoMsg.value = ''
+  error.value = ''
+  try {
+    classifyStatus.value = 'AI 분류 준비 중…'
+    await loadClassifier((pct) => {
+      classifyStatus.value = pct != null ? `AI 모델 내려받는 중 ${pct}%` : 'AI 분류 준비 중…'
+    })
+    const assigned = await classifyToSlots(files, slots, (done, total) => {
+      classifyStatus.value = `사진 분류 중 (${done}/${total})`
+    })
+    assigned.forEach(({ itemId, file }) => {
+      selectedFiles[itemId] = file
+    })
+    submitHint.value = ''
+    autoMsg.value = `사진 ${assigned.length}장을 자동으로 분류했어요. 각 항목이 맞는지 확인해주세요.`
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch (err) {
+    error.value = '자동 분류를 사용할 수 없어요. 항목별로 직접 선택해주세요.'
+    console.error(err)
+  } finally {
+    classifying.value = false
+  }
 }
 
 function onSelect({ itemId, file }) {
@@ -206,12 +253,22 @@ async function submit() {
             {{ status.message }}
           </div>
 
+          <!-- 사진 한번에 올리기 (AI 자동 분류) -->
+          <button v-if="!allSelected" class="bulk-btn" :disabled="classifying" @click="pickBulk">
+            <span class="bulk-title"><Icon name="image" :size="24" /> 사진 한번에 올리기</span>
+            <span class="bulk-sub">여러 장을 고르면 AI가 항목에 맞게 자동 분류해요</span>
+          </button>
+          <input ref="bulkInput" type="file" accept="image/*" multiple hidden @change="onBulkFiles" />
+
+          <div v-if="autoMsg" class="alert alert-info" style="margin-top: 12px">{{ autoMsg }}</div>
+
           <div class="items">
             <PhotoUploadCard
               v-for="(item, idx) in items"
               :key="item.itemId"
               :item="item"
               :index="idx + 1"
+              :file="selectedFiles[item.itemId] || null"
               @select="onSelect"
               @zoom="lightbox = $event"
             />
@@ -236,6 +293,13 @@ async function submit() {
             </button>
           </div>
         </template>
+
+        <!-- 자동 분류 진행 오버레이 -->
+        <div v-if="classifying" class="lightbox classify-overlay">
+          <span class="spinner big"></span>
+          <p class="lightbox-hint">{{ classifyStatus }}</p>
+          <p class="lightbox-hint dim">사진은 기기 안에서만 처리되고 아직 전송되지 않아요</p>
+        </div>
 
         <!-- 이미지 확대 -->
         <div v-if="lightbox" class="lightbox" @click="lightbox = ''">
@@ -441,6 +505,46 @@ async function submit() {
   flex-direction: column;
   gap: 14px;
   margin-top: 14px;
+}
+
+/* 사진 한번에 올리기 */
+.bulk-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-soft);
+  border: 2px dashed var(--primary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: inherit;
+}
+.bulk-btn:disabled {
+  opacity: 0.6;
+}
+.bulk-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+.bulk-sub {
+  font-size: 17px;
+  color: var(--text-muted);
+}
+.classify-overlay .spinner.big {
+  width: 44px;
+  height: 44px;
+  border-width: 5px;
+}
+.lightbox-hint.dim {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 /* 상단 진행 헤더 (고정하지 않고 콘텐츠와 함께 스크롤 — 화면을 넓게 사용) */

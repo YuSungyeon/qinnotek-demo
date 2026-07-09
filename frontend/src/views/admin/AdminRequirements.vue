@@ -30,7 +30,7 @@ async function load() {
 
 function openCreate() {
   editing.value = null
-  form.value = { name: '', description: '' }
+  form.value = { name: '', description: '', classificationHint: '' }
   file.value = null
   modalError.value = ''
   showModal.value = true
@@ -38,7 +38,11 @@ function openCreate() {
 
 function openEdit(r) {
   editing.value = r
-  form.value = { name: r.name, description: r.description || '' }
+  form.value = {
+    name: r.name,
+    description: r.description || '',
+    classificationHint: r.classificationHint || ''
+  }
   file.value = null
   modalError.value = ''
   showModal.value = true
@@ -64,6 +68,7 @@ async function save() {
     const payload = {
       name: form.value.name.trim(),
       description: form.value.description.trim(),
+      classificationHint: form.value.classificationHint.trim(),
       exampleImage: file.value
     }
     if (editing.value) {
@@ -141,6 +146,16 @@ onMounted(load)
           rows="3"
           placeholder="고객에게 보여줄 촬영 안내 문구"
         ></textarea>
+
+        <label class="label" style="margin-top: 14px">AI 분류 힌트 (영문)</label>
+        <input
+          v-model="form.classificationHint"
+          class="input"
+          placeholder="예: the exterior facade of a building"
+        />
+        <p class="muted hint-help">
+          고객이 '사진 한번에 올리기'를 쓰면 이 힌트로 자동 분류합니다. 사진을 영어로 묘사해주세요.
+        </p>
 
         <label class="label" style="margin-top: 14px">
           예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}
@@ -257,6 +272,10 @@ onMounted(load)
 }
 .modal textarea {
   resize: vertical;
+}
+.hint-help {
+  margin: 6px 0 0;
+  font-size: 12px;
 }
 .cur-example {
   display: flex;

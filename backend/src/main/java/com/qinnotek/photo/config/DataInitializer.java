@@ -35,13 +35,17 @@ public class DataInitializer implements CommandLineRunner {
         log.info("데모용 초기 데이터 생성");
 
         PhotoRequirement front = requirementRepository.save(
-                new PhotoRequirement("건물 정면", "건물 전체가 나오도록 정면에서 촬영해주세요.", null));
+                new PhotoRequirement("건물 정면", "건물 전체가 나오도록 정면에서 촬영해주세요.",
+                        "the exterior facade of a building seen from outside", null));
         PhotoRequirement signboard = requirementRepository.save(
-                new PhotoRequirement("간판", "간판 상호가 선명하게 보이도록 촬영해주세요.", null));
+                new PhotoRequirement("간판", "간판 상호가 선명하게 보이도록 촬영해주세요.",
+                        "a storefront signboard with shop name text", null));
         PhotoRequirement interior = requirementRepository.save(
-                new PhotoRequirement("내부 전경", "매장 내부가 잘 보이도록 촬영해주세요.", null));
+                new PhotoRequirement("내부 전경", "매장 내부가 잘 보이도록 촬영해주세요.",
+                        "the indoor interior of a store or room", null));
         requirementRepository.save(
-                new PhotoRequirement("사업자등록증", "사업자등록증 전체가 나오도록 촬영해주세요.", null));
+                new PhotoRequirement("사업자등록증", "사업자등록증 전체가 나오도록 촬영해주세요.",
+                        "a paper document certificate with printed text", null));
 
         Company a = new Company("가나상사");
         a.changePhoneNumber("01012345678");
