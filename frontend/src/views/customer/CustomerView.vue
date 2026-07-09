@@ -359,17 +359,19 @@ async function submit() {
         <div v-if="swapSource" class="sheet-mask" @click.self="closeSwap">
           <div class="sheet">
             <p class="sheet-title">이 사진을 어디로 옮길까요?</p>
-            <button v-for="row in swapRows" :key="row.itemId" class="sheet-row" @click="doSwap(row.itemId)">
-              <span class="sheet-thumb">
-                <img v-if="row.thumb" :src="row.thumb" alt="" />
-                <Icon v-else name="image" :size="24" />
-              </span>
-              <span class="sheet-info">
-                <b>{{ row.name }}</b>
-                <small>{{ row.hasFile ? '사진 있음 → 서로 교환' : '비어 있음 → 이동' }}</small>
-              </span>
-              <Icon :name="row.hasFile ? 'swap' : 'arrowRight'" :size="22" class="sheet-arrow" />
-            </button>
+            <div class="sheet-list">
+              <button v-for="row in swapRows" :key="row.itemId" class="sheet-row" @click="doSwap(row.itemId)">
+                <span class="sheet-thumb">
+                  <img v-if="row.thumb" :src="row.thumb" alt="" />
+                  <Icon v-else name="image" :size="24" />
+                </span>
+                <span class="sheet-info">
+                  <b>{{ row.name }}</b>
+                  <small>{{ row.hasFile ? '사진 있음 → 서로 교환' : '비어 있음 → 이동' }}</small>
+                </span>
+                <Icon :name="row.hasFile ? 'swap' : 'arrowRight'" :size="22" class="sheet-arrow" />
+              </button>
+            </div>
             <button class="btn btn-ghost btn-block sheet-cancel" @click="closeSwap">취소</button>
           </div>
         </div>
@@ -658,6 +660,9 @@ async function submit() {
 .sheet {
   width: 100%;
   max-width: 560px;
+  max-height: 80vh; /* 항목이 많아도 화면을 넘지 않음 */
+  display: flex;
+  flex-direction: column;
   background: var(--card);
   border-radius: 20px 20px 0 0;
   padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
@@ -666,6 +671,14 @@ async function submit() {
   font-size: 22px;
   font-weight: 800;
   margin: 0 0 14px;
+  flex: 0 0 auto;
+}
+/* 목록만 스크롤 (제목·취소 버튼은 고정) */
+.sheet-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .sheet-row {
   width: 100%;
@@ -724,6 +737,7 @@ async function submit() {
 .sheet-cancel {
   margin-top: 4px;
   font-size: 20px;
+  flex: 0 0 auto;
 }
 .lightbox-hint.dim {
   font-size: 16px;
