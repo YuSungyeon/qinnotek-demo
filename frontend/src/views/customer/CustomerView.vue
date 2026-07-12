@@ -80,6 +80,21 @@ const classifying = ref(false)
 const classifyStatus = ref('') // 진행 문구
 const autoMsg = ref('') // 완료 배너
 
+// 내부 확인용 분류 상세 (고객에게 표시하지 않음 — 로고 5번 탭으로만 열림)
+const aiDebug = ref([]) // [{slot, file, score, margin, second}]
+const showAiDebug = ref(false)
+let brandTaps = 0
+let brandTapTimer = null
+function onBrandTap() {
+  brandTaps += 1
+  clearTimeout(brandTapTimer)
+  brandTapTimer = setTimeout(() => (brandTaps = 0), 2000)
+  if (brandTaps >= 5) {
+    brandTaps = 0
+    showAiDebug.value = true
+  }
+}
+
 function pickBulk() {
   bulkInput.value?.click()
 }
@@ -110,6 +125,15 @@ async function onBulkFiles(e) {
       selectedFiles[itemId] = file
       autoAssigned[itemId] = true
     })
+    // 내부 확인용 기록 (화면에는 노출하지 않음)
+    const nameOf = (id) => items.value.find((i) => i.itemId === id)?.name || '-'
+    aiDebug.value = assigned.map((a) => ({
+      slot: nameOf(a.itemId),
+      file: a.file.name,
+      score: Math.round(a.score * 100),
+      margin: Math.round(a.margin * 100),
+      second: a.secondItemId ? nameOf(a.secondItemId) : '-'
+    }))
     submitHint.value = ''
     autoMsg.value = `사진 ${assigned.length}장을 자동으로 분류했어요. 각 항목이 맞는지 확인해주세요.`
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -246,7 +270,7 @@ async function submit() {
     <!-- 앱바 -->
     <header class="appbar">
       <div class="appbar-inner">
-        <span class="brand-mark"><Icon name="camera" :size="20" /></span>
+        <span class="brand-mark" @click="onBrandTap"><Icon name="camera" :size="20" /></span>
         <span class="brand-name">사진 제출 센터</span>
       </div>
     </header>
@@ -429,6 +453,25 @@ async function submit() {
     <footer class="foot muted">
       기업 요청 사진을 안전하게 제출하는 페이지입니다.
     </footer>
+
+    <!-- 내부 확인용: AI 분류 상세 (로고 5번 탭으로만 열림, 고객 대상 아님) -->
+    <div v-if="showAiDebug" class="lightbox" @click.self="showAiDebug = false">
+      <div class="ai-debug">
+        <p class="ai-debug-title">AI 분류 상세 <small>내부 확인용</small></p>
+        <template v-if="aiDebug.length">
+          <div v-for="(r, i) in aiDebug" :key="i" class="ai-debug-row">
+            <b>{{ r.slot }}</b> ← {{ r.file }}
+            <span class="ai-debug-meta">
+              확신 {{ r.score }}% · 2위({{ r.second }})와 차이 {{ r.margin >= 0 ? '+' : '' }}{{ r.margin }}%p
+            </span>
+          </div>
+        </template>
+        <p v-else class="ai-debug-empty">이 세션에서 자동 분류 기록이 없습니다.</p>
+        <button class="btn btn-ghost btn-block" style="margin-top: 12px" @click="showAiDebug = false">
+          닫기
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -863,5 +906,47 @@ async function submit() {
   text-align: center;
   font-size: 15px;
   padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+}
+
+/* 내부 확인용 AI 분류 상세 */
+.ai-debug {
+  width: 100%;
+  max-width: 480px;
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.ai-debug-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+.ai-debug-title small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+.ai-debug-row {
+  font-size: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  word-break: break-all;
+}
+.ai-debug-row:last-of-type {
+  border-bottom: none;
+}
+.ai-debug-meta {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.ai-debug-empty {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
 }
 </style>

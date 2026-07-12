@@ -32,25 +32,31 @@ export function loadClassifier(onProgress) {
 
 /**
  * 여러 파일을 슬롯(요구 사진)에 자동 배정한다.
+ * 확신이 낮아도 전부 배정한다(고객에게 별도 표시 없음).
+ * 확신 지표(score/margin)는 내부 확인용으로만 함께 반환 — 모델 정확도가
+ * 충분히 오르면 반환하지 않는 방향으로 정리 예정.
+ *
  * @param files File[]
  * @param slots [{ itemId, label }]  label = 영문 분류 힌트(없으면 항목명)
  * @param onProgress (done, total) => void
- * @returns [{ itemId, file, score }]
+ * @returns [{ itemId, file, score, margin, secondItemId }]
+ *          margin = 배정 라벨 점수 - 그 파일의 차순위 라벨 점수 (낮을수록 헷갈린 것)
  */
 export async function classifyToSlots(files, slots, onProgress) {
   const classifier = await loadClassifier()
   const labels = slots.map((s) => s.label)
 
-  // 각 파일 × 각 라벨 점수 계산
-  const scored = [] // { fileIdx, slotIdx, score }
+  // 파일별 라벨 점수 (내림차순)
+  const perFile = [] // fileIdx -> [{slotIdx, score}]
   for (let f = 0; f < files.length; f++) {
     const url = URL.createObjectURL(files[f])
     try {
       const out = await classifier(url, labels) // [{score, label}]
-      for (const { score, label } of out) {
-        const s = labels.indexOf(label)
-        if (s !== -1) scored.push({ fileIdx: f, slotIdx: s, score })
-      }
+      const rows = out
+        .map(({ score, label }) => ({ slotIdx: labels.indexOf(label), score }))
+        .filter((r) => r.slotIdx !== -1)
+        .sort((a, b) => b.score - a.score)
+      perFile.push(rows)
     } finally {
       URL.revokeObjectURL(url)
       onProgress?.(f + 1, files.length)
@@ -58,15 +64,25 @@ export async function classifyToSlots(files, slots, onProgress) {
   }
 
   // 그리디 1:1 배정 - 점수 높은 쌍부터 확정
-  scored.sort((a, b) => b.score - a.score)
+  const flat = []
+  perFile.forEach((rows, fileIdx) => rows.forEach((r) => flat.push({ fileIdx, ...r })))
+  flat.sort((a, b) => b.score - a.score)
+
   const usedFile = new Set()
   const usedSlot = new Set()
   const result = []
-  for (const { fileIdx, slotIdx, score } of scored) {
+  for (const { fileIdx, slotIdx, score } of flat) {
     if (usedFile.has(fileIdx) || usedSlot.has(slotIdx)) continue
     usedFile.add(fileIdx)
     usedSlot.add(slotIdx)
-    result.push({ itemId: slots[slotIdx].itemId, file: files[fileIdx], score })
+    const others = perFile[fileIdx].filter((r) => r.slotIdx !== slotIdx)
+    result.push({
+      itemId: slots[slotIdx].itemId,
+      file: files[fileIdx],
+      score,
+      margin: score - (others[0]?.score ?? 0),
+      secondItemId: others[0] ? slots[others[0].slotIdx].itemId : null
+    })
   }
   return result
 }
