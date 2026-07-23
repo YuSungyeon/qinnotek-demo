@@ -1,12 +1,15 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import Icon from '../../components/Icon.vue'
+import { useReviewNotifications } from '../../composables/useReviewNotifications'
 
 const nav = [
-  { to: '/admin/companies', icon: 'building', label: '기업 관리' },
+  { to: '/admin/companies', icon: 'building', label: '기업 관리', badge: true },
   { to: '/admin/requirements', icon: 'layers', label: '요구 사진 관리' },
   { to: '/admin/settings', icon: 'settings', label: '관리자 설정' }
 ]
+
+const { reviewCompanies, bumped } = useReviewNotifications()
 </script>
 
 <template>
@@ -24,6 +27,11 @@ const nav = [
         <RouterLink v-for="n in nav" :key="n.to" :to="n.to" class="nav-item">
           <span class="nav-icon"><Icon :name="n.icon" :size="18" /></span>
           <span>{{ n.label }}</span>
+          <span
+            v-if="n.badge && reviewCompanies > 0"
+            class="nav-badge"
+            :class="{ bump: bumped }"
+          >{{ reviewCompanies }}</span>
         </RouterLink>
       </nav>
 
@@ -116,6 +124,33 @@ nav {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+}
+.nav-badge {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.nav-badge.bump {
+  animation: badge-bump 0.5s ease 0s 2;
+}
+@keyframes badge-bump {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
 }
 .nav-item:hover {
   background: var(--side-hover, rgba(255, 255, 255, 0.06));

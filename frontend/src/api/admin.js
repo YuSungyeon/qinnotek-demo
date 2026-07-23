@@ -60,6 +60,11 @@ export const adminApi = {
     return client.delete(`/api/admin/requirements/${id}`).then((r) => r.data)
   },
 
+  // 알림 배지 (폴링용 경량 카운트)
+  getNotifications() {
+    return client.get('/api/admin/notifications').then((r) => r.data)
+  },
+
   // 관리자 설정 (알림 문자 수신 번호)
   getSettings() {
     return client.get('/api/admin/settings').then((r) => r.data)
