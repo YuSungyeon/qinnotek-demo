@@ -84,9 +84,12 @@ export const adminApi = {
     return client.get('/api/admin/notifications').then((r) => r.data)
   },
 
-  // 관리자 설정 (알림 문자 수신 번호)
+  // 관리자 설정
   getSettings() {
     return client.get('/api/admin/settings').then((r) => r.data)
+  },
+  updateSmsEnabled(enabled) {
+    return client.put('/api/admin/settings/sms', { enabled }).then((r) => r.data)
   },
   updateAdminPhone(adminPhoneNumber) {
     return client

@@ -34,6 +34,26 @@ public class AdminSettingService {
         return toResponse(setting);
     }
 
+    @Transactional
+    public AdminSettingDto.Response updateSmsEnabled(boolean enabled) {
+        AdminSetting setting = repository.findTopByOrderByIdAsc().orElseGet(AdminSetting::new);
+        setting.changeSmsEnabled(enabled);
+        repository.save(setting);
+        return toResponse(setting);
+    }
+
+    /** 문자 발송 토글이 켜져 있는지 (설정 없으면 기본 on) */
+    public boolean isSmsEnabled() {
+        return repository.findTopByOrderByIdAsc().map(AdminSetting::isSmsEnabled).orElse(true);
+    }
+
+    /** 서버에 Solapi 키가 설정되어 실제 발송 가능한지 */
+    public boolean isSmsKeyReady() {
+        var sms = appProperties.getSms();
+        return sms.getApiKey() != null && !sms.getApiKey().isBlank()
+                && sms.getApiSecret() != null && !sms.getApiSecret().isBlank();
+    }
+
     /** 공개 테마 조회 (설정 없으면 기본값) */
     public AdminSettingDto.Theme getTheme() {
         return repository.findTopByOrderByIdAsc()
@@ -45,12 +65,9 @@ public class AdminSettingService {
     }
 
     private AdminSettingDto.Response toResponse(AdminSetting setting) {
-        var sms = appProperties.getSms();
-        boolean configured = sms.isEnabled()
-                && sms.getApiKey() != null && !sms.getApiKey().isBlank()
-                && sms.getApiSecret() != null && !sms.getApiSecret().isBlank();
         return new AdminSettingDto.Response(
-                configured,
+                setting.isSmsEnabled(),
+                isSmsKeyReady(),
                 setting.getDesignId() == null ? "base" : setting.getDesignId(),
                 setting.getThemeId() == null ? "blue" : setting.getThemeId(),
                 setting.getPrimaryColor());

@@ -11,6 +11,9 @@ public interface CompanyManagerRepository extends JpaRepository<CompanyManager, 
     @Query("select cm from CompanyManager cm join fetch cm.manager where cm.company.id = :companyId")
     List<CompanyManager> findByCompanyIdWithManager(Long companyId);
 
+    @Query("select cm from CompanyManager cm join fetch cm.company order by cm.company.name asc")
+    List<CompanyManager> findAllWithCompany();
+
     List<CompanyManager> findByCompanyId(Long companyId);
 
     void deleteByManagerId(Long managerId);

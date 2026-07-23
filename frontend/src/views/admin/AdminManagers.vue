@@ -93,20 +93,26 @@ onMounted(load)
 
     <table v-else class="tbl">
       <thead>
-        <tr><th>이름</th><th>직책</th><th>전화번호</th><th></th></tr>
+        <tr><th>이름</th><th>직책</th><th>전화번호</th><th>지정된 기업</th><th></th></tr>
       </thead>
       <tbody>
         <tr v-for="m in list" :key="m.id">
           <td class="strong">{{ m.name }}</td>
           <td>{{ m.position || '—' }}</td>
           <td>{{ fmtPhone(m.phoneNumber) }}</td>
+          <td>
+            <div v-if="m.companies && m.companies.length" class="chips">
+              <span v-for="c in m.companies" :key="c" class="chip">{{ c }}</span>
+            </div>
+            <span v-else class="muted">지정된 기업 없음</span>
+          </td>
           <td class="right">
             <button class="btn btn-ghost btn-sm" @click="openEdit(m)">수정</button>
             <button class="btn btn-danger btn-sm" @click="remove(m)">삭제</button>
           </td>
         </tr>
         <tr v-if="list.length === 0">
-          <td colspan="4" class="muted center">등록된 담당자가 없습니다.</td>
+          <td colspan="5" class="muted center">등록된 담당자가 없습니다.</td>
         </tr>
       </tbody>
     </table>
@@ -192,6 +198,21 @@ onMounted(load)
 }
 .right .btn {
   margin-left: 8px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  background: var(--primary-soft);
 }
 .modal-mask {
   position: fixed;

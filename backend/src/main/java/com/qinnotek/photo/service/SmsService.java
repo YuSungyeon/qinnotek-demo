@@ -23,13 +23,14 @@ import java.util.List;
 public class SmsService {
 
     private final AppProperties appProperties;
+    private final AdminSettingService adminSettingService;
     private final CompanyManagerRepository companyManagerRepository;
 
     public void notifyManagersOnSubmission(Long companyId, String companyName) {
         var sms = appProperties.getSms();
 
-        if (!sms.isEnabled()) {
-            log.info("[SMS] 비활성화 상태 - '{}' 제출 알림 발송 생략", companyName);
+        if (!adminSettingService.isSmsEnabled()) {
+            log.info("[SMS] 발송 토글 off - '{}' 제출 알림 발송 생략", companyName);
             return;
         }
         if (isBlank(sms.getApiKey()) || isBlank(sms.getApiSecret())) {

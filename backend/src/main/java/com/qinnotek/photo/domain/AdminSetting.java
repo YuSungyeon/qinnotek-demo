@@ -30,9 +30,17 @@ public class AdminSetting {
     @Column(length = 20)
     private String primaryColor;
 
+    /** 문자 발송 on/off (관리자 토글). 기본 on, 실제 발송은 서버 키 설정도 필요 */
+    @Column(nullable = false)
+    private boolean smsEnabled = true;
+
     public void changeTheme(String designId, String themeId, String primaryColor) {
         this.designId = (designId == null || designId.isBlank()) ? "base" : designId.trim();
         this.themeId = (themeId == null || themeId.isBlank()) ? "blue" : themeId.trim();
         this.primaryColor = (primaryColor == null || primaryColor.isBlank()) ? null : primaryColor.trim();
+    }
+
+    public void changeSmsEnabled(boolean enabled) {
+        this.smsEnabled = enabled;
     }
 }

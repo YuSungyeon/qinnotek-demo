@@ -26,4 +26,10 @@ public class AdminSettingController {
     public AdminSettingDto.Response updateTheme(@RequestBody AdminSettingDto.UpdateTheme request) {
         return settingService.updateTheme(request.designId(), request.themeId(), request.primaryColor());
     }
+
+    @Operation(summary = "문자 발송 on/off", description = "관리자 알림 문자 발송 토글")
+    @PutMapping("/sms")
+    public AdminSettingDto.Response updateSms(@RequestBody AdminSettingDto.UpdateSms request) {
+        return settingService.updateSmsEnabled(request.enabled());
+    }
 }

@@ -4,7 +4,9 @@ import { adminApi } from '../../api/admin'
 import { themeApi } from '../../api/theme'
 import { THEMES, DESIGN_META, applyTheme, saveThemeLocal, resolveColors } from '../../theme'
 
-const smsConfigured = ref(false)
+const smsEnabled = ref(true)
+const smsKeyReady = ref(false)
+const smsToggling = ref(false)
 const loading = ref(true)
 const error = ref('')
 
@@ -25,7 +27,8 @@ async function load() {
   error.value = ''
   try {
     const s = await adminApi.getSettings()
-    smsConfigured.value = s.smsConfigured
+    smsEnabled.value = s.smsEnabled
+    smsKeyReady.value = s.smsKeyReady
     designId.value = s.designId || 'base'
     themeId.value = s.themeId || 'blue'
     primaryColor.value = s.primaryColor || ''
@@ -33,6 +36,23 @@ async function load() {
     error.value = err.message
   } finally {
     loading.value = false
+  }
+}
+
+async function toggleSms() {
+  const next = !smsEnabled.value
+  smsEnabled.value = next // 낙관적 반영
+  smsToggling.value = true
+  error.value = ''
+  try {
+    const s = await adminApi.updateSmsEnabled(next)
+    smsEnabled.value = s.smsEnabled
+    smsKeyReady.value = s.smsKeyReady
+  } catch (err) {
+    smsEnabled.value = !next // 실패 시 롤백
+    error.value = err.message
+  } finally {
+    smsToggling.value = false
   }
 }
 
@@ -76,7 +96,7 @@ onMounted(load)
   <div>
     <div class="page-head"><h1>관리자 설정</h1></div>
     <p class="muted" style="margin-top: -8px; margin-bottom: 18px">
-      고객이 사진을 제출하면 이 번호로 알림 문자가 발송됩니다.
+      화면 디자인과 알림 문자 발송을 관리합니다.
     </p>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
@@ -148,15 +168,34 @@ onMounted(load)
 
       <section class="card" style="max-width: 480px">
         <h2 class="ctitle">알림 문자</h2>
-        <p class="muted" style="font-size: 14px; margin: 0 0 12px">
-          문자를 받을 담당자는 <RouterLink to="/admin/managers" class="link">담당자 관리</RouterLink>에서 등록하고,
+
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <b>제출 알림 문자 발송</b>
+            <small class="muted">고객 제출 시 지정 담당자에게 문자를 보냅니다.</small>
+          </div>
+          <button
+            class="switch"
+            :class="{ on: smsEnabled }"
+            :disabled="smsToggling"
+            role="switch"
+            :aria-checked="smsEnabled"
+            @click="toggleSms"
+          >
+            <span class="knob"></span>
+          </button>
+        </div>
+
+        <div v-if="smsEnabled && !smsKeyReady" class="sms-note off">
+          문자 발송은 켜져 있지만, 서버에 Solapi 키(SOLAPI_API_KEY/SECRET)가 없어 실제 발송되지 않습니다.
+        </div>
+        <div v-else-if="smsEnabled" class="sms-note ok">발송 준비 완료 — 지정된 담당자에게 문자가 전송됩니다.</div>
+        <div v-else class="sms-note muted-note">문자 발송이 꺼져 있습니다.</div>
+
+        <p class="muted" style="font-size: 13px; margin: 14px 0 0">
+          받을 담당자는 <RouterLink to="/admin/managers" class="link">담당자 관리</RouterLink>에서 등록하고,
           기업 상세에서 기업별로 지정합니다.
         </p>
-        <div class="sms-status" :class="smsConfigured ? 'ok' : 'off'">
-          <strong>SMS 연동:</strong>
-          <span v-if="smsConfigured">활성화됨 (발송 가능)</span>
-          <span v-else>비활성화 — 서버에 Solapi 키(SOLAPI_API_KEY/SECRET)와 SMS_ENABLED=true 설정 필요</span>
-        </div>
       </section>
     </template>
   </div>
@@ -260,20 +299,77 @@ textarea.input {
   font-size: 14px;
   font-weight: 600;
 }
-.sms-status {
-  margin-top: 18px;
-  padding: 12px 14px;
-  border-radius: 8px;
+/* 문자 on/off 토글 */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toggle-text b {
+  font-size: 16px;
+  font-weight: 700;
+}
+.toggle-text small {
+  font-size: 13px;
+}
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 56px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: #cbd5e1;
+  transition: background 0.22s ease;
+}
+.switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.switch.on {
+  background: var(--success);
+}
+.switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.switch.on .knob {
+  transform: translateX(24px);
+}
+.sms-note {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
   font-size: 14px;
 }
-.sms-status.ok {
+.sms-note.ok {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #15803d;
 }
-.sms-status.off {
+.sms-note.off {
   background: #fffbeb;
   border: 1px solid #fde68a;
   color: var(--warning);
+}
+.sms-note.muted-note {
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 </style>

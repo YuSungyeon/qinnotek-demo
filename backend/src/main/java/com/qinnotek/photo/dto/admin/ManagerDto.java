@@ -10,9 +10,9 @@ import java.util.List;
  */
 public class ManagerDto {
 
-    public record Response(Long id, String name, String position, String phoneNumber) {
-        public static Response from(Manager m) {
-            return new Response(m.getId(), m.getName(), m.getPosition(), m.getPhoneNumber());
+    public record Response(Long id, String name, String position, String phoneNumber, List<String> companies) {
+        public static Response from(Manager m, List<String> companies) {
+            return new Response(m.getId(), m.getName(), m.getPosition(), m.getPhoneNumber(), companies);
         }
     }
 
