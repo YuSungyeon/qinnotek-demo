@@ -15,10 +15,21 @@ const submission = ref(null)
 const loading = ref(true)
 const error = ref('')
 
-// 담당자 지정
+// 담당자 지정 모달
+const showManagerModal = ref(false)
 const selectedManagerIds = ref([])
+const managerKeyword = ref('')
 const savingMgr = ref(false)
-const mgrMsg = ref('')
+const filteredManagers = computed(() => {
+  const k = managerKeyword.value.trim().toLowerCase()
+  if (!k) return managers.value
+  return managers.value.filter((m) =>
+    [m.name, m.position, m.phoneNumber].some((v) => (v || '').toLowerCase().includes(k))
+  )
+})
+const assignedManagerNames = computed(() =>
+  managers.value.filter((m) => selectedManagerIds.value.includes(m.id)).map((m) => m.name)
+)
 
 // 전화번호 편집
 const phoneInput = ref('')
@@ -124,6 +135,11 @@ async function saveRequirements() {
   }
 }
 
+function openManagerModal() {
+  selectedManagerIds.value = [...(company.value.assignedManagerIds || [])]
+  managerKeyword.value = ''
+  showManagerModal.value = true
+}
 function toggleManager(id) {
   const i = selectedManagerIds.value.indexOf(id)
   if (i === -1) selectedManagerIds.value.push(id)
@@ -131,12 +147,10 @@ function toggleManager(id) {
 }
 async function saveManagers() {
   savingMgr.value = true
-  mgrMsg.value = ''
   error.value = ''
   try {
     company.value = await adminApi.assignManagers(companyId.value, selectedManagerIds.value)
-    mgrMsg.value = '저장되었습니다.'
-    setTimeout(() => (mgrMsg.value = ''), 2000)
+    showManagerModal.value = false
   } catch (err) {
     error.value = err.message
   } finally {
@@ -251,6 +265,12 @@ onMounted(loadAll)
       <h1>{{ company.name }}</h1>
       <span class="badge" :style="{ background: company.statusColor }">{{ company.statusLabel }}</span>
       <div class="head-actions">
+        <button class="btn btn-ghost btn-sm" @click="openManagerModal">
+          <Icon name="user" :size="15" /> 알림 담당자
+          <span v-if="(company.assignedManagerIds || []).length" class="count-badge">
+            {{ company.assignedManagerIds.length }}
+          </span>
+        </button>
         <button class="btn btn-ghost btn-sm" @click="openNameEdit">이름 수정</button>
         <button class="btn btn-danger btn-sm" @click="deleteError = ''; showDeleteModal = true">기업 삭제</button>
       </div>
@@ -296,32 +316,6 @@ onMounted(loadAll)
         </div>
       </section>
 
-      <!-- 알림 담당자 지정 -->
-      <section class="card">
-        <h2 class="ctitle">알림 담당자 지정</h2>
-        <p class="muted small">이 기업 제출 시 문자를 받을 담당자를 선택하세요.</p>
-        <div v-if="managers.length === 0" class="muted">
-          등록된 담당자가 없습니다.
-          <RouterLink to="/admin/managers" class="link">담당자 관리 →</RouterLink>
-        </div>
-        <div v-else class="req-list">
-          <label v-for="m in managers" :key="m.id" class="req-check mgr-row">
-            <input
-              type="checkbox"
-              :checked="selectedManagerIds.includes(m.id)"
-              @change="toggleManager(m.id)"
-            />
-            <span class="mgr-info">
-              <b>{{ m.name }}</b>
-              <small class="muted">{{ m.position ? m.position + ' · ' : '' }}{{ m.phoneNumber }}</small>
-            </span>
-          </label>
-        </div>
-        <div class="save-row">
-          <button class="btn" :disabled="savingMgr" @click="saveManagers">지정 저장</button>
-          <span v-if="mgrMsg" class="ok-msg">{{ mgrMsg }}</span>
-        </div>
-      </section>
     </div>
 
     <!-- 제출 사진 검수 -->
@@ -402,6 +396,55 @@ onMounted(loadAll)
             @click="confirmReturn"
           >
             반환하기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 알림 담당자 지정 모달 -->
+    <div v-if="showManagerModal" class="modal-mask" @click.self="showManagerModal = false">
+      <div class="modal mgr-modal">
+        <h3>알림 담당자 지정</h3>
+        <p class="disp-name">{{ company.name }} · 제출 시 문자를 받을 담당자</p>
+
+        <template v-if="managers.length === 0">
+          <p class="muted" style="margin: 8px 0 0">
+            등록된 담당자가 없습니다.
+            <RouterLink to="/admin/managers" class="link">담당자 관리 →</RouterLink>
+          </p>
+        </template>
+        <template v-else>
+          <input
+            v-model="managerKeyword"
+            class="input"
+            placeholder="이름·직책·전화번호 검색"
+            style="margin-bottom: 10px"
+          />
+          <div v-if="assignedManagerNames.length" class="picked muted">
+            선택됨: {{ assignedManagerNames.join(', ') }}
+          </div>
+          <div class="mgr-list">
+            <label v-for="m in filteredManagers" :key="m.id" class="mgr-opt">
+              <input
+                type="checkbox"
+                :checked="selectedManagerIds.includes(m.id)"
+                @change="toggleManager(m.id)"
+              />
+              <span class="mgr-info">
+                <b>{{ m.name }}</b>
+                <small class="muted">{{ m.position ? m.position + ' · ' : '' }}{{ m.phoneNumber }}</small>
+              </span>
+            </label>
+            <p v-if="filteredManagers.length === 0" class="muted center" style="padding: 12px">
+              검색 결과가 없습니다.
+            </p>
+          </div>
+        </template>
+
+        <div class="modal-actions">
+          <button class="btn btn-ghost" @click="showManagerModal = false">취소</button>
+          <button class="btn" :disabled="savingMgr || managers.length === 0" @click="saveManagers">
+            지정 저장
           </button>
         </div>
       </div>
@@ -554,9 +597,48 @@ onMounted(loadAll)
   width: 18px;
   height: 18px;
 }
-.mgr-row {
+.count-badge {
+  display: inline-flex;
   align-items: center;
-  padding: 4px 0;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.mgr-modal {
+  max-width: 460px;
+}
+.picked {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.mgr-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.mgr-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.mgr-opt:last-child {
+  border-bottom: none;
+}
+.mgr-opt input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 .mgr-info {
   display: flex;
