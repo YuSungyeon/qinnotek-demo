@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, reactive, ref } from 'vue'
 import { customerApi } from '../../api/customer'
+import { fileUrl } from '../../api/client'
 import { classifyToSlots, loadClassifier } from '../../lib/classifier'
 import { compressImage } from '../../lib/resize'
 import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
@@ -107,7 +108,11 @@ async function onBulkFiles(e) {
   // 아직 선택 안 된 슬롯에만 배정 (직접 고른 사진은 유지)
   const slots = items.value
     .filter((i) => !selectedFiles[i.itemId])
-    .map((i) => ({ itemId: i.itemId, label: i.classificationHint || i.name }))
+    .map((i) => ({
+      itemId: i.itemId,
+      label: i.classificationHint || i.name,
+      exampleUrl: i.exampleImageUrl ? fileUrl(i.exampleImageUrl) : null
+    }))
   if (!slots.length) return
 
   classifying.value = true
