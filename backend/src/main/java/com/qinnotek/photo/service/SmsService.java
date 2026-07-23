@@ -33,33 +33,38 @@ public class SmsService {
             log.warn("[SMS] API Key/Secret 미설정 - 발송 생략");
             return;
         }
-        String adminPhone = adminSettingService.getAdminPhoneNumber();
-        if (isBlank(adminPhone)) {
+        java.util.List<String> recipients = adminSettingService.getAdminPhoneNumbers();
+        if (recipients.isEmpty()) {
             log.warn("[SMS] 관리자 전화번호 미설정 - 발송 생략 (관리자 설정에서 등록 필요)");
             return;
         }
 
-        // 발신번호: SOLAPI_SENDER 설정이 있으면 사용, 없으면 관리자 번호
-        String from = isBlank(sms.getSenderNumber()) ? adminPhone : sms.getSenderNumber();
+        // 발신번호: SOLAPI_SENDER 설정이 있으면 사용, 없으면 첫 관리자 번호
+        String from = isBlank(sms.getSenderNumber()) ? recipients.get(0) : sms.getSenderNumber();
 
         // SMS 한글 45자 이내
         String text = companyName + "에서 사진을 등록했습니다. 검토 바랍니다.";
 
-        try {
-            DefaultMessageService messageService =
-                    SolapiClient.INSTANCE.createInstance(sms.getApiKey(), sms.getApiSecret());
-            Message message = new Message();
-            message.setFrom(from);
-            message.setTo(adminPhone);
-            message.setText(text);
+        DefaultMessageService messageService =
+                SolapiClient.INSTANCE.createInstance(sms.getApiKey(), sms.getApiSecret());
 
-            messageService.send(message);
-            log.info("[SMS] 관리자 알림 발송 완료 -> {}", adminPhone);
-        } catch (SolapiMessageNotReceivedException e) {
-            log.error("[SMS] 발송 실패 목록: {} / {}", e.getFailedMessageList(), e.getMessage());
-        } catch (Exception e) {
-            log.error("[SMS] 발송 오류: {}", e.getMessage());
+        // 번호별로 발송 (한 번호 실패가 다른 번호에 영향 주지 않도록 개별 처리)
+        int ok = 0;
+        for (String to : recipients) {
+            try {
+                Message message = new Message();
+                message.setFrom(from);
+                message.setTo(to);
+                message.setText(text);
+                messageService.send(message);
+                ok++;
+            } catch (SolapiMessageNotReceivedException e) {
+                log.error("[SMS] 발송 실패({}): {} / {}", to, e.getFailedMessageList(), e.getMessage());
+            } catch (Exception e) {
+                log.error("[SMS] 발송 오류({}): {}", to, e.getMessage());
+            }
         }
+        log.info("[SMS] 관리자 알림 발송 완료 {}/{}건", ok, recipients.size());
     }
 
     private boolean isBlank(String s) {

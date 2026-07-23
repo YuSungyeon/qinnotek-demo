@@ -28,7 +28,8 @@ async function load() {
   error.value = ''
   try {
     const s = await adminApi.getSettings()
-    phone.value = s.adminPhoneNumber || ''
+    // 저장은 쉼표 구분 → 편집은 번호당 한 줄로 표시
+    phone.value = (s.adminPhoneNumber || '').split(',').filter(Boolean).join('\n')
     smsConfigured.value = s.smsConfigured
     designId.value = s.designId || 'base'
     themeId.value = s.themeId || 'blue'
@@ -79,9 +80,10 @@ async function save() {
   error.value = ''
   try {
     const s = await adminApi.updateAdminPhone(phone.value.trim())
-    phone.value = s.adminPhoneNumber || ''
+    phone.value = (s.adminPhoneNumber || '').split(',').filter(Boolean).join('\n')
     smsConfigured.value = s.smsConfigured
-    msg.value = '저장되었습니다.'
+    const n = phone.value ? phone.value.split('\n').length : 0
+    msg.value = n > 0 ? `${n}개 번호가 저장되었습니다.` : '저장되었습니다.'
     setTimeout(() => (msg.value = ''), 2000)
   } catch (err) {
     error.value = err.message
@@ -169,12 +171,20 @@ onMounted(load)
 
       <section class="card" style="max-width: 480px">
         <h2 class="ctitle">알림 문자 수신 번호</h2>
-      <label class="label">관리자 전화번호</label>
-      <div class="row">
-        <input v-model="phone" class="input" placeholder="예: 01012345678" @keyup.enter="save" />
-        <button class="btn" :disabled="saving" @click="save">저장</button>
-      </div>
-      <span v-if="msg" class="ok-msg">{{ msg }}</span>
+        <label class="label">관리자 전화번호 (여러 명이면 한 줄에 하나씩)</label>
+        <textarea
+          v-model="phone"
+          class="input"
+          rows="3"
+          placeholder="01012345678&#10;01099998888"
+        ></textarea>
+        <div class="save-row">
+          <button class="btn" :disabled="saving" @click="save">저장</button>
+          <span v-if="msg" class="ok-msg" style="margin: 0">{{ msg }}</span>
+        </div>
+        <p class="muted" style="font-size: 13px; margin: 8px 0 0">
+          제출 시 등록된 모든 번호로 알림 문자가 발송됩니다.
+        </p>
 
       <div class="sms-status" :class="smsConfigured ? 'ok' : 'off'">
         <strong>SMS 연동:</strong>
@@ -203,6 +213,16 @@ onMounted(load)
 .row > .input {
   flex: 1;
   min-width: 0;
+}
+textarea.input {
+  resize: vertical;
+  line-height: 1.6;
+}
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
 }
 .theme-card {
   max-width: 620px;

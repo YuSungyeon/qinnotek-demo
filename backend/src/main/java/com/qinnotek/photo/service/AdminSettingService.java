@@ -52,11 +52,11 @@ public class AdminSettingService {
                 .orElse(new AdminSettingDto.Theme("base", "blue", null));
     }
 
-    /** 알림 발송에 사용할 관리자 번호 (없으면 null) */
-    public String getAdminPhoneNumber() {
+    /** 알림 발송에 사용할 관리자 번호 목록 (없으면 빈 리스트) */
+    public java.util.List<String> getAdminPhoneNumbers() {
         return repository.findTopByOrderByIdAsc()
-                .map(AdminSetting::getAdminPhoneNumber)
-                .orElse(null);
+                .map(AdminSetting::getAdminPhoneNumbers)
+                .orElseGet(java.util.List::of);
     }
 
     private AdminSettingDto.Response toResponse(AdminSetting setting) {
