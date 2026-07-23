@@ -122,7 +122,7 @@ public class CustomerService {
         }
 
         actionable.forEach(SubmissionItem::submit);
-        smsService.notifyAdminOnSubmission(company.getName());
+        smsService.notifyManagersOnSubmission(company.getId(), company.getName());
 
         return buildStatus(company, items);
     }

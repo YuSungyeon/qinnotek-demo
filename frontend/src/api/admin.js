@@ -27,6 +27,25 @@ export const adminApi = {
       .put(`/api/admin/companies/${id}/requirements`, { requirementIds })
       .then((r) => r.data)
   },
+  assignManagers(id, managerIds) {
+    return client
+      .put(`/api/admin/companies/${id}/managers`, { managerIds })
+      .then((r) => r.data)
+  },
+
+  // 담당자(마스터)
+  listManagers() {
+    return client.get('/api/admin/managers').then((r) => r.data)
+  },
+  createManager(payload) {
+    return client.post('/api/admin/managers', payload).then((r) => r.data)
+  },
+  updateManager(id, payload) {
+    return client.put(`/api/admin/managers/${id}`, payload).then((r) => r.data)
+  },
+  deleteManager(id) {
+    return client.delete(`/api/admin/managers/${id}`).then((r) => r.data)
+  },
 
   // 요구 사진(마스터)
   listRequirements() {

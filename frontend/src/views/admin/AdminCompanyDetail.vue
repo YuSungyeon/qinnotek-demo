@@ -10,9 +10,15 @@ const router = useRouter()
 
 const company = ref(null)
 const requirements = ref([])
+const managers = ref([])
 const submission = ref(null)
 const loading = ref(true)
 const error = ref('')
+
+// 담당자 지정
+const selectedManagerIds = ref([])
+const savingMgr = ref(false)
+const mgrMsg = ref('')
 
 // 전화번호 편집
 const phoneInput = ref('')
@@ -63,16 +69,19 @@ async function loadAll() {
   loading.value = true
   error.value = ''
   try {
-    const [detail, reqs, subs] = await Promise.all([
+    const [detail, reqs, mgrs, subs] = await Promise.all([
       adminApi.getCompany(companyId.value),
       adminApi.listRequirements(),
+      adminApi.listManagers(),
       adminApi.getSubmissions(companyId.value)
     ])
     company.value = detail
     requirements.value = reqs
+    managers.value = mgrs
     submission.value = subs
     phoneInput.value = detail.phoneNumber || ''
     selectedReqIds.value = [...detail.assignedRequirementIds]
+    selectedManagerIds.value = [...(detail.assignedManagerIds || [])]
   } catch (err) {
     error.value = err.message
   } finally {
@@ -112,6 +121,26 @@ async function saveRequirements() {
     error.value = err.message
   } finally {
     savingReq.value = false
+  }
+}
+
+function toggleManager(id) {
+  const i = selectedManagerIds.value.indexOf(id)
+  if (i === -1) selectedManagerIds.value.push(id)
+  else selectedManagerIds.value.splice(i, 1)
+}
+async function saveManagers() {
+  savingMgr.value = true
+  mgrMsg.value = ''
+  error.value = ''
+  try {
+    company.value = await adminApi.assignManagers(companyId.value, selectedManagerIds.value)
+    mgrMsg.value = '저장되었습니다.'
+    setTimeout(() => (mgrMsg.value = ''), 2000)
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    savingMgr.value = false
   }
 }
 
@@ -264,6 +293,33 @@ onMounted(loadAll)
         <div class="save-row">
           <button class="btn" :disabled="savingReq" @click="saveRequirements">지정 저장</button>
           <span v-if="reqMsg" class="ok-msg">{{ reqMsg }}</span>
+        </div>
+      </section>
+
+      <!-- 알림 담당자 지정 -->
+      <section class="card">
+        <h2 class="ctitle">알림 담당자 지정</h2>
+        <p class="muted small">이 기업 제출 시 문자를 받을 담당자를 선택하세요.</p>
+        <div v-if="managers.length === 0" class="muted">
+          등록된 담당자가 없습니다.
+          <RouterLink to="/admin/managers" class="link">담당자 관리 →</RouterLink>
+        </div>
+        <div v-else class="req-list">
+          <label v-for="m in managers" :key="m.id" class="req-check mgr-row">
+            <input
+              type="checkbox"
+              :checked="selectedManagerIds.includes(m.id)"
+              @change="toggleManager(m.id)"
+            />
+            <span class="mgr-info">
+              <b>{{ m.name }}</b>
+              <small class="muted">{{ m.position ? m.position + ' · ' : '' }}{{ m.phoneNumber }}</small>
+            </span>
+          </label>
+        </div>
+        <div class="save-row">
+          <button class="btn" :disabled="savingMgr" @click="saveManagers">지정 저장</button>
+          <span v-if="mgrMsg" class="ok-msg">{{ mgrMsg }}</span>
         </div>
       </section>
     </div>
@@ -497,6 +553,18 @@ onMounted(loadAll)
 .req-check input {
   width: 18px;
   height: 18px;
+}
+.mgr-row {
+  align-items: center;
+  padding: 4px 0;
+}
+.mgr-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.mgr-info small {
+  font-size: 13px;
 }
 .detail-link {
   border: none;

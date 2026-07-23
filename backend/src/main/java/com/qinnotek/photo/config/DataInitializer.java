@@ -1,9 +1,13 @@
 package com.qinnotek.photo.config;
 
 import com.qinnotek.photo.domain.Company;
+import com.qinnotek.photo.domain.CompanyManager;
+import com.qinnotek.photo.domain.Manager;
 import com.qinnotek.photo.domain.PhotoRequirement;
 import com.qinnotek.photo.domain.SubmissionItem;
+import com.qinnotek.photo.repository.CompanyManagerRepository;
 import com.qinnotek.photo.repository.CompanyRepository;
+import com.qinnotek.photo.repository.ManagerRepository;
 import com.qinnotek.photo.repository.PhotoRequirementRepository;
 import com.qinnotek.photo.repository.SubmissionItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +30,8 @@ public class DataInitializer implements CommandLineRunner {
     private final CompanyRepository companyRepository;
     private final PhotoRequirementRepository requirementRepository;
     private final SubmissionItemRepository submissionItemRepository;
+    private final ManagerRepository managerRepository;
+    private final CompanyManagerRepository companyManagerRepository;
 
     @Override
     public void run(String... args) {
@@ -65,6 +71,15 @@ public class DataInitializer implements CommandLineRunner {
         submissionItemRepository.saveAll(List.of(
                 new SubmissionItem(b, front),
                 new SubmissionItem(b, signboard)
+        ));
+
+        // 담당자 마스터 + 기업별 지정
+        Manager m1 = managerRepository.save(new Manager("김점장", "점장", "01011112222"));
+        Manager m2 = managerRepository.save(new Manager("이사장", "대표", "01033334444"));
+        managerRepository.save(new Manager("박대리", "대리", "01055557777"));
+        companyManagerRepository.saveAll(List.of(
+                new CompanyManager(a, m1),
+                new CompanyManager(a, m2)
         ));
 
         log.info("초기 데이터 생성 완료 - 조회 테스트: 01012345678 / 01055556666");

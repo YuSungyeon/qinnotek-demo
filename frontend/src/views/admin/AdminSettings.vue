@@ -4,11 +4,8 @@ import { adminApi } from '../../api/admin'
 import { themeApi } from '../../api/theme'
 import { THEMES, DESIGN_META, applyTheme, saveThemeLocal, resolveColors } from '../../theme'
 
-const phone = ref('')
 const smsConfigured = ref(false)
 const loading = ref(true)
-const saving = ref(false)
-const msg = ref('')
 const error = ref('')
 
 // 디자인 / 테마
@@ -28,8 +25,6 @@ async function load() {
   error.value = ''
   try {
     const s = await adminApi.getSettings()
-    // 저장은 쉼표 구분 → 편집은 번호당 한 줄로 표시
-    phone.value = (s.adminPhoneNumber || '').split(',').filter(Boolean).join('\n')
     smsConfigured.value = s.smsConfigured
     designId.value = s.designId || 'base'
     themeId.value = s.themeId || 'blue'
@@ -72,24 +67,6 @@ function selectPreset(id) {
 function onCustomColor(e) {
   primaryColor.value = e.target.value
   persistTheme()
-}
-
-async function save() {
-  saving.value = true
-  msg.value = ''
-  error.value = ''
-  try {
-    const s = await adminApi.updateAdminPhone(phone.value.trim())
-    phone.value = (s.adminPhoneNumber || '').split(',').filter(Boolean).join('\n')
-    smsConfigured.value = s.smsConfigured
-    const n = phone.value ? phone.value.split('\n').length : 0
-    msg.value = n > 0 ? `${n}개 번호가 저장되었습니다.` : '저장되었습니다.'
-    setTimeout(() => (msg.value = ''), 2000)
-  } catch (err) {
-    error.value = err.message
-  } finally {
-    saving.value = false
-  }
 }
 
 onMounted(load)
@@ -170,27 +147,16 @@ onMounted(load)
       </section>
 
       <section class="card" style="max-width: 480px">
-        <h2 class="ctitle">알림 문자 수신 번호</h2>
-        <label class="label">관리자 전화번호 (여러 명이면 한 줄에 하나씩)</label>
-        <textarea
-          v-model="phone"
-          class="input"
-          rows="3"
-          placeholder="01012345678&#10;01099998888"
-        ></textarea>
-        <div class="save-row">
-          <button class="btn" :disabled="saving" @click="save">저장</button>
-          <span v-if="msg" class="ok-msg" style="margin: 0">{{ msg }}</span>
-        </div>
-        <p class="muted" style="font-size: 13px; margin: 8px 0 0">
-          제출 시 등록된 모든 번호로 알림 문자가 발송됩니다.
+        <h2 class="ctitle">알림 문자</h2>
+        <p class="muted" style="font-size: 14px; margin: 0 0 12px">
+          문자를 받을 담당자는 <RouterLink to="/admin/managers" class="link">담당자 관리</RouterLink>에서 등록하고,
+          기업 상세에서 기업별로 지정합니다.
         </p>
-
-      <div class="sms-status" :class="smsConfigured ? 'ok' : 'off'">
-        <strong>SMS 연동:</strong>
-        <span v-if="smsConfigured">활성화됨 (발송 가능)</span>
-        <span v-else>비활성화 — 서버에 Solapi 키(SOLAPI_API_KEY/SECRET)와 SMS_ENABLED=true 설정 필요</span>
-      </div>
+        <div class="sms-status" :class="smsConfigured ? 'ok' : 'off'">
+          <strong>SMS 연동:</strong>
+          <span v-if="smsConfigured">활성화됨 (발송 가능)</span>
+          <span v-else>비활성화 — 서버에 Solapi 키(SOLAPI_API_KEY/SECRET)와 SMS_ENABLED=true 설정 필요</span>
+        </div>
       </section>
     </template>
   </div>

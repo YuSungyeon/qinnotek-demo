@@ -6,7 +6,7 @@ import com.qinnotek.photo.domain.CompanyStatus;
 import java.util.List;
 
 /**
- * 관리자 기업 상세. 현재 지정된 요구 사진 ID 목록 포함.
+ * 관리자 기업 상세. 지정된 요구 사진 ID / 알림 담당자 ID 목록 포함.
  */
 public record CompanyDetailResponse(
         Long id,
@@ -15,9 +15,12 @@ public record CompanyDetailResponse(
         String status,
         String statusLabel,
         String statusColor,
-        List<Long> assignedRequirementIds
+        List<Long> assignedRequirementIds,
+        List<Long> assignedManagerIds
 ) {
-    public static CompanyDetailResponse of(Company company, CompanyStatus status, List<Long> assignedRequirementIds) {
+    public static CompanyDetailResponse of(Company company, CompanyStatus status,
+                                           List<Long> assignedRequirementIds,
+                                           List<Long> assignedManagerIds) {
         return new CompanyDetailResponse(
                 company.getId(),
                 company.getName(),
@@ -25,7 +28,8 @@ public record CompanyDetailResponse(
                 status.name(),
                 status.getLabel(),
                 status.getColor(),
-                assignedRequirementIds
+                assignedRequirementIds,
+                assignedManagerIds
         );
     }
 }

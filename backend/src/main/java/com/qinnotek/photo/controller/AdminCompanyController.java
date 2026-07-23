@@ -64,4 +64,11 @@ public class AdminCompanyController {
                                                     @RequestBody CompanyRequests.AssignRequirements request) {
         return companyService.assignRequirements(id, request.requirementIds());
     }
+
+    @Operation(summary = "알림 담당자 지정", description = "제출 시 문자를 받을 담당자 다중 선택")
+    @PutMapping("/{id}/managers")
+    public CompanyDetailResponse assignManagers(@PathVariable Long id,
+                                                @RequestBody com.qinnotek.photo.dto.admin.ManagerDto.Assign request) {
+        return companyService.assignManagers(id, request.managerIds());
+    }
 }

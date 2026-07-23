@@ -6,6 +6,7 @@ import { useReviewNotifications } from '../../composables/useReviewNotifications
 const nav = [
   { to: '/admin/companies', icon: 'building', label: '기업 관리', badge: true },
   { to: '/admin/requirements', icon: 'layers', label: '요구 사진 관리' },
+  { to: '/admin/managers', icon: 'user', label: '담당자 관리' },
   { to: '/admin/settings', icon: 'settings', label: '관리자 설정' }
 ]
 

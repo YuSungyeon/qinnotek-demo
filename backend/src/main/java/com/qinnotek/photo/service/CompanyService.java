@@ -1,13 +1,17 @@
 package com.qinnotek.photo.service;
 
 import com.qinnotek.photo.domain.Company;
+import com.qinnotek.photo.domain.CompanyManager;
 import com.qinnotek.photo.domain.CompanyStatus;
+import com.qinnotek.photo.domain.Manager;
 import com.qinnotek.photo.domain.PhotoRequirement;
 import com.qinnotek.photo.domain.SubmissionItem;
 import com.qinnotek.photo.dto.admin.CompanyDetailResponse;
 import com.qinnotek.photo.dto.admin.CompanySummaryResponse;
 import com.qinnotek.photo.exception.BusinessException;
+import com.qinnotek.photo.repository.CompanyManagerRepository;
 import com.qinnotek.photo.repository.CompanyRepository;
+import com.qinnotek.photo.repository.ManagerRepository;
 import com.qinnotek.photo.repository.PhotoRequirementRepository;
 import com.qinnotek.photo.repository.SubmissionItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +32,8 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final PhotoRequirementRepository requirementRepository;
     private final SubmissionItemRepository submissionItemRepository;
+    private final ManagerRepository managerRepository;
+    private final CompanyManagerRepository companyManagerRepository;
     private final FileStorageService fileStorageService;
 
     public List<CompanySummaryResponse> search(String keyword) {
@@ -50,10 +56,13 @@ public class CompanyService {
 
     public CompanyDetailResponse getDetail(Long id) {
         Company company = getOrThrow(id);
-        List<Long> assigned = submissionItemRepository.findByCompanyIdWithRequirement(id).stream()
+        List<Long> assignedReq = submissionItemRepository.findByCompanyIdWithRequirement(id).stream()
                 .map(i -> i.getRequirement().getId())
                 .toList();
-        return CompanyDetailResponse.of(company, computeStatus(id), assigned);
+        List<Long> assignedMgr = companyManagerRepository.findByCompanyIdWithManager(id).stream()
+                .map(cm -> cm.getManager().getId())
+                .toList();
+        return CompanyDetailResponse.of(company, computeStatus(id), assignedReq, assignedMgr);
     }
 
     @Transactional
@@ -63,7 +72,7 @@ public class CompanyService {
             throw BusinessException.conflict("이미 등록된 기업명입니다: " + trimmed);
         }
         Company saved = companyRepository.save(new Company(trimmed));
-        return CompanyDetailResponse.of(saved, CompanyStatus.NONE, List.of());
+        return CompanyDetailResponse.of(saved, CompanyStatus.NONE, List.of(), List.of());
     }
 
     @Transactional
@@ -77,14 +86,43 @@ public class CompanyService {
         return getDetail(id);
     }
 
-    /** 기업 삭제 - 제출 항목과 업로드 파일도 함께 삭제 */
+    /** 기업 삭제 - 제출 항목·파일·담당자 지정도 함께 삭제 */
     @Transactional
     public void delete(Long id) {
         Company company = getOrThrow(id);
         List<SubmissionItem> items = submissionItemRepository.findByCompanyId(id);
         items.forEach(i -> fileStorageService.delete(i.getStoredFileName()));
         submissionItemRepository.deleteAll(items);
+        companyManagerRepository.deleteAll(companyManagerRepository.findByCompanyId(id));
         companyRepository.delete(company);
+    }
+
+    /** 알림 담당자 지정 - 선택된 담당자 목록으로 연결을 동기화한다. */
+    @Transactional
+    public CompanyDetailResponse assignManagers(Long id, List<Long> managerIds) {
+        Company company = getOrThrow(id);
+        Set<Long> targetIds = new LinkedHashSet<>(managerIds == null ? List.of() : managerIds);
+
+        List<CompanyManager> existing = companyManagerRepository.findByCompanyIdWithManager(id);
+        Set<Long> existingIds = existing.stream()
+                .map(cm -> cm.getManager().getId())
+                .collect(Collectors.toSet());
+
+        // 해제된 담당자 연결 삭제
+        for (CompanyManager cm : existing) {
+            if (!targetIds.contains(cm.getManager().getId())) {
+                companyManagerRepository.delete(cm);
+            }
+        }
+        // 새로 선택된 담당자 연결 추가
+        for (Long managerId : targetIds) {
+            if (!existingIds.contains(managerId)) {
+                Manager manager = managerRepository.findById(managerId)
+                        .orElseThrow(() -> BusinessException.notFound("담당자를 찾을 수 없습니다: " + managerId));
+                companyManagerRepository.save(new CompanyManager(company, manager));
+            }
+        }
+        return getDetail(id);
     }
 
     @Transactional
