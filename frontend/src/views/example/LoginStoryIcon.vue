@@ -220,7 +220,7 @@ function submit() {
               </p>
               <span class="scene">
                 <component :is="SCENE[item.key].b[0]" class="big" />
-                <i class="badge"><component :is="SCENE[item.key].b[1]" /></i>
+                <i class="ibadge"><component :is="SCENE[item.key].b[1]" /></i>
               </span>
               <p class="txt">{{ item.before }}</p>
             </div>
@@ -234,7 +234,7 @@ function submit() {
               </p>
               <span class="scene">
                 <component :is="SCENE[item.key].a[0]" class="big" />
-                <i class="badge"><component :is="SCENE[item.key].a[1]" /></i>
+                <i class="ibadge"><component :is="SCENE[item.key].a[1]" /></i>
               </span>
               <p class="txt">{{ item.after }}</p>
             </div>
@@ -566,7 +566,7 @@ svg {
   height: 34px;
   stroke-width: 1.5;
 }
-.badge {
+.ibadge {
   position: absolute;
   right: 6px;
   bottom: 4px;
@@ -576,7 +576,7 @@ svg {
   height: 24px;
   border-radius: 50%;
 }
-.badge svg {
+.ibadge svg {
   width: 14px;
   height: 14px;
   stroke-width: 2.1;
@@ -585,7 +585,7 @@ svg {
   background: rgba(255, 255, 255, 0.06);
   color: #92a3bd;
 }
-.before .badge {
+.before .ibadge {
   background: #24344e;
   color: #9fb0c9;
 }
@@ -593,7 +593,7 @@ svg {
   background: rgba(91, 157, 255, 0.16);
   color: #9cc4ff;
 }
-.after .badge {
+.after .ibadge {
   background: #5b9dff;
   color: #0d1a2e;
 }
