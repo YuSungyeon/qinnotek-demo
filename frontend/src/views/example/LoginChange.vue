@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 // MES SaaS 로그인 — "도입하면 무엇이 어떻게 바뀌는가"를 로그인 옆에서 보여준다.
 const ROWS = [
@@ -33,6 +33,17 @@ const METRICS = [
 const after = ref(true)
 const shown = reactive(METRICS.map((m) => m.after))
 let tween = 0
+// 4초마다 도입 전/후를 번갈아 보여준다 (직접 누르면 잠시 멈췄다가 다시 이어감)
+const auto = ref(true)
+let cycle = 0
+let resume = 0
+
+function pick(v) {
+  after.value = v
+  auto.value = false
+  clearTimeout(resume)
+  resume = setTimeout(() => (auto.value = true), 8000)
+}
 
 watch(after, (v) => {
   clearInterval(tween)
@@ -46,7 +57,16 @@ watch(after, (v) => {
     if (t >= 1) clearInterval(tween)
   }, 16)
 })
-onBeforeUnmount(() => clearInterval(tween))
+onMounted(() => {
+  cycle = setInterval(() => {
+    if (auto.value) after.value = !after.value
+  }, 4000)
+})
+onBeforeUnmount(() => {
+  clearInterval(tween)
+  clearInterval(cycle)
+  clearTimeout(resume)
+})
 
 // ---- 로그인 ----
 const form = reactive({ tenant: '', email: '', password: '', keep: true })
@@ -94,8 +114,8 @@ function submit() {
         <h1>같은 현장, 달라지는 것은<br />기록이 남는 방식입니다</h1>
 
         <div class="toggle" role="tablist">
-          <button :class="{ on: !after }" @click="after = false">도입 전</button>
-          <button :class="{ on: after }" @click="after = true">MES 도입 후</button>
+          <button :class="{ on: !after }" @click="pick(false)">도입 전</button>
+          <button :class="{ on: after }" @click="pick(true)">MES 도입 후</button>
         </div>
 
         <ul class="rows">

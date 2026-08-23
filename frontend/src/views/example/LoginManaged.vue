@@ -87,17 +87,23 @@ const auto = ref(true)
 let timer = 0
 const current = computed(() => OBJECTS[sel.value])
 
+let resume = 0
+// 2초씩 순서대로 계속 돌아간다 (직접 누르면 잠시 멈췄다가 다시 이어감)
 function pick(i) {
   sel.value = i
   auto.value = false
-  clearInterval(timer)
+  clearTimeout(resume)
+  resume = setTimeout(() => (auto.value = true), 8000)
 }
 onMounted(() => {
   timer = setInterval(() => {
     if (auto.value) sel.value = (sel.value + 1) % OBJECTS.length
-  }, 3800)
+  }, 2000)
 })
-onBeforeUnmount(() => clearInterval(timer))
+onBeforeUnmount(() => {
+  clearInterval(timer)
+  clearTimeout(resume)
+})
 
 // ---- 로그인 ----
 const form = reactive({ tenant: '', email: '', password: '', keep: true })

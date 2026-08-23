@@ -36,6 +36,11 @@ const routes = [
     component: () => import('../views/example/LoginManaged.vue')
   },
   {
+    path: '/example7',
+    name: 'example7',
+    component: () => import('../views/example/LoginStory.vue')
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     children: [
