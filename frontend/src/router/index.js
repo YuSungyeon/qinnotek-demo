@@ -16,6 +16,11 @@ const routes = [
     component: () => import('../views/example/MesFlowView2.vue')
   },
   {
+    path: '/example3',
+    name: 'example3',
+    component: () => import('../views/example/MesFlowView3.vue')
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     children: [
