@@ -11,6 +11,11 @@ import AdminSettings from '../views/admin/AdminSettings.vue'
 const routes = [
   { path: '/', name: 'customer', component: CustomerView },
   {
+    path: '/example2',
+    name: 'example2',
+    component: () => import('../views/example/MesFlowView2.vue')
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     children: [
