@@ -23,7 +23,7 @@ const routes = [
   {
     path: '/example4',
     name: 'example4',
-    component: () => import('../views/example/LoginTerminal.vue')
+    component: () => import('../views/example/LoginChange.vue')
   },
   {
     path: '/example5',
@@ -33,7 +33,7 @@ const routes = [
   {
     path: '/example6',
     name: 'example6',
-    component: () => import('../views/example/LoginBadge.vue')
+    component: () => import('../views/example/LoginManaged.vue')
   },
   {
     path: '/admin',
