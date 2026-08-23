@@ -21,6 +21,21 @@ const routes = [
     component: () => import('../views/example/MesFlowView3.vue')
   },
   {
+    path: '/example4',
+    name: 'example4',
+    component: () => import('../views/example/LoginTerminal.vue')
+  },
+  {
+    path: '/example5',
+    name: 'example5',
+    component: () => import('../views/example/LoginSaas.vue')
+  },
+  {
+    path: '/example6',
+    name: 'example6',
+    component: () => import('../views/example/LoginBadge.vue')
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     children: [
