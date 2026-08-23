@@ -273,8 +273,8 @@ const seg = (a, b) => clamp((y.value - a * vh.value) / Math.max(1, (b - a) * vh.
 const foldSide = computed(() => easeIO(seg(0.03, 0.34)))
 const foldTop = computed(() => easeIO(seg(0.26, 0.54)))
 const fly = computed(() => easeIO(seg(0.44, 0.72)))
-const draw = computed(() => seg(0.52, 0.8))
-const circIn = computed(() => seg(0.74, 0.86))
+const draw = computed(() => seg(0.5, 0.75))
+const circIn = computed(() => seg(0.68, 0.79))
 
 // ---- 장면 진행도 ----
 const sceneP = computed(() => {
@@ -288,6 +288,9 @@ const bgT = computed(() => easeIO(seg(6.78, 7.0)))
 const rackFade = computed(() => 1 - seg(6.78, 7.0))
 
 const heroOp = computed(() => 1 - seg(0.1, 0.3))
+// 접히기 직전에 나타났다가 각 방향이 접히면 사라지는 접힘선
+const creaseV = computed(() => Math.min(seg(0.005, 0.05), 1 - foldSide.value * 1.6))
+const creaseH = computed(() => Math.min(seg(0.005, 0.05), 1 - foldTop.value * 1.6))
 const sheetOp = computed(() => 1 - seg(0.66, 0.8))
 const checkOp = computed(() => circIn.value * (1 - clamp(sceneP.value * 2.2, 0, 1)))
 // 입고가 중앙에 오기 전에 나타나고, 입고를 지나면 천천히 사라진다
@@ -689,16 +692,42 @@ const beltClip = computed(() => {
 // ---- 편지 접기 ----
 const pct = (v) => (v * 100).toFixed(2) + '%'
 const face = (t) => {
-  const k = clamp((t - 0.44) / 0.12, 0, 1)
+  const k = clamp((t - 0.42) / 0.14, 0, 1)
   return (
     'rgb(' +
-    Math.round(lerp(255, 231, k)) +
+    Math.round(lerp(255, 222, k)) +
     ',' +
-    Math.round(lerp(255, 234, k)) +
+    Math.round(lerp(255, 227, k)) +
     ',' +
-    Math.round(lerp(255, 240, k)) +
+    Math.round(lerp(255, 236, k)) +
     ')'
   )
+}
+// 들려 올라간 면의 음영 — 경첩 쪽은 어둡고 바깥(가까운) 모서리는 밝다
+const shade = (dir, t) => {
+  const a = (0.16 * clamp(t * 1.4, 0, 1)).toFixed(3)
+  const b = (0.5 * clamp(t * 1.4, 0, 1)).toFixed(3)
+  return (
+    'linear-gradient(to ' +
+    dir +
+    ', rgba(15, 23, 42, ' +
+    a +
+    ') 0%, rgba(255, 255, 255, ' +
+    b +
+    ') 78%)'
+  )
+}
+// 들려 올라간 면이 종이 위에 드리우는 그림자 띠
+const foldShade = (dir, frac, t) => ({
+  opacity: (Math.sin(Math.PI * clamp(t, 0, 1)) * 0.95).toFixed(3),
+  background:
+    'linear-gradient(to ' + dir + ', rgba(15, 23, 42, 0.26), rgba(15, 23, 42, 0) 92%)',
+  [dir === 'bottom' || dir === 'top' ? 'height' : 'width']: pct(frac * (0.35 + 0.65 * t))
+})
+// 접히는 면이 아래 종이에 드리우는 그림자
+const castShadow = (t, dx, dy) => {
+  const a = (0.3 * clamp(t * 1.6, 0, 1)).toFixed(3)
+  return dx + 'px ' + dy + 'px 30px rgba(2, 8, 20, ' + a + ')'
 }
 const sheetStyle = computed(() => ({
   opacity: sheetOp.value,
@@ -706,43 +735,67 @@ const sheetStyle = computed(() => ({
     'translateY(' +
     lerp(0, -27.5 * cineScale.value, fly.value).toFixed(1) +
     'px) scale(' +
-    lerp(1, 0.26, fly.value).toFixed(3) +
+    lerp(1, 0.32, fly.value).toFixed(3) +
     ')'
 }))
 const vCut = computed(() => pct(foldFy.value * foldTop.value))
+const fsL = computed(() => ({
+  left: pct(foldFx.value),
+  ...foldShade('right', foldFx.value, foldSide.value)
+}))
+const fsR = computed(() => ({
+  right: pct(foldFx.value),
+  ...foldShade('left', foldFx.value, foldSide.value)
+}))
+const fsT = computed(() => ({
+  top: pct(foldFy.value),
+  ...foldShade('bottom', foldFy.value, foldTop.value)
+}))
+const fsB = computed(() => ({
+  bottom: pct(foldFy.value),
+  ...foldShade('top', foldFy.value, foldTop.value)
+}))
 const panelC = computed(() => ({
   clipPath:
     'inset(' + vCut.value + ' ' + pct(foldFx.value) + ' ' + vCut.value + ' ' + pct(foldFx.value) + ')'
 }))
 const panelL = computed(() => ({
+  backgroundImage: shade('left', foldSide.value),
+  boxShadow: castShadow(foldSide.value, 14, 0),
   zIndex: 2,
   background: face(foldSide.value),
   clipPath: 'inset(' + vCut.value + ' ' + pct(1 - foldFx.value) + ' ' + vCut.value + ' 0)',
   transformOrigin: pct(foldFx.value) + ' 50%',
-  transform: 'perspective(1600px) rotateY(' + (180 * foldSide.value).toFixed(2) + 'deg)'
+  transform: 'rotateY(' + (180 * foldSide.value).toFixed(2) + 'deg)'
 }))
 const panelR = computed(() => ({
+  backgroundImage: shade('right', foldSide.value),
+  boxShadow: castShadow(foldSide.value, -14, 0),
   zIndex: 2,
   background: face(foldSide.value),
   clipPath: 'inset(' + vCut.value + ' 0 ' + vCut.value + ' ' + pct(1 - foldFx.value) + ')',
   transformOrigin: pct(1 - foldFx.value) + ' 50%',
-  transform: 'perspective(1600px) rotateY(' + (-180 * foldSide.value).toFixed(2) + 'deg)'
+  transform: 'rotateY(' + (-180 * foldSide.value).toFixed(2) + 'deg)'
 }))
 const panelT = computed(() => ({
+  backgroundImage: shade('top', foldTop.value),
+  boxShadow: castShadow(foldTop.value, 0, 16),
   zIndex: foldTop.value > 0.001 ? 3 : 1,
   background: face(foldTop.value),
   clipPath:
     'inset(0 ' + pct(foldFx.value) + ' ' + pct(1 - foldFy.value) + ' ' + pct(foldFx.value) + ')',
   transformOrigin: '50% ' + pct(foldFy.value),
-  transform: 'perspective(1600px) rotateX(' + (-180 * foldTop.value).toFixed(2) + 'deg)'
+  transform: 'rotateX(' + (-180 * foldTop.value).toFixed(2) + 'deg)'
 }))
 const panelB = computed(() => ({
+  backgroundImage: shade('bottom', foldTop.value),
+  boxShadow: castShadow(foldTop.value, 0, -16),
   zIndex: foldTop.value > 0.001 ? 3 : 1,
   background: face(foldTop.value),
   clipPath:
     'inset(' + pct(1 - foldFy.value) + ' ' + pct(foldFx.value) + ' 0 ' + pct(foldFx.value) + ')',
   transformOrigin: '50% ' + pct(1 - foldFy.value),
-  transform: 'perspective(1600px) rotateX(' + (180 * foldTop.value).toFixed(2) + 'deg)'
+  transform: 'rotateX(' + (180 * foldTop.value).toFixed(2) + 'deg)'
 }))
 
 let raf = 0
@@ -1044,8 +1097,19 @@ onBeforeUnmount(() => {
           <div class="scroll-cue"><span /></div>
         </div>
       </div>
+      <!-- 미리 그어진 접힘선 -->
+      <div class="creases" aria-hidden="true">
+        <span class="cr cr-v" :style="{ left: pct(foldFx), opacity: creaseV }" />
+        <span class="cr cr-v" :style="{ left: pct(1 - foldFx), opacity: creaseV }" />
+        <span class="cr cr-h" :style="{ top: pct(foldFy), opacity: creaseH }" />
+        <span class="cr cr-h" :style="{ top: pct(1 - foldFy), opacity: creaseH }" />
+      </div>
+      <div class="fshade fs-x" :style="fsL" />
+      <div class="fshade fs-x" :style="fsR" />
       <div class="panel fold" :style="panelL" />
       <div class="panel fold" :style="panelR" />
+      <div class="fshade fs-y" :style="fsT" />
+      <div class="fshade fs-y" :style="fsB" />
       <div class="panel fold" :style="panelT" />
       <div class="panel fold" :style="panelB" />
     </div>
@@ -1145,21 +1209,56 @@ onBeforeUnmount(() => {
 }
 
 /* ---- 편지 접기 ---- */
+/* 딥네이비 배경 위에 놓인 한 장의 편지지 */
 .sheet {
   position: fixed;
-  inset: 0;
+  inset: 4.5vh 5.5vw;
   z-index: 12;
   pointer-events: none;
+  overflow: hidden; /* 접히는 면이 종이 밖으로 나가지 않도록 */
   will-change: transform, opacity;
+  filter: drop-shadow(0 26px 60px rgba(2, 8, 20, 0.55));
+}
+.creases {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.cr {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.16);
+}
+.cr-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.cr-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+/* 접히는 면이 종이 위에 드리우는 그림자 */
+.fshade {
+  position: absolute;
+  pointer-events: none;
+}
+.fs-x {
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+}
+.fs-y {
+  left: 0;
+  right: 0;
+  z-index: 2;
 }
 .panel {
   position: absolute;
   inset: 0;
   background: var(--ex-paper);
 }
-.panel.fold {
-  box-shadow: 0 10px 34px rgba(15, 23, 42, 0.16);
-}
+
 .hero-copy {
   position: absolute;
   inset: 0;
