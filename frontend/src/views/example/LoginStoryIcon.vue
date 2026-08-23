@@ -21,6 +21,86 @@ const WAY = {
     '<circle cx="12" cy="17.8" r="1.7"/><path d="M8.6 14.4a4.9 4.9 0 0 1 6.8 0"/><path d="M5.7 11.3a9 9 0 0 1 12.6 0"/><path d="M12 3.2v4.2M9.6 5.1l2.4 2.3 2.4-2.3"/>'
 }
 
+// 대상별 상황 삽화 — 왼쪽(지금까지) / 오른쪽(MES에서는), viewBox 0 0 140 80
+const PICS = {
+  so: {
+    b:
+      '<rect x="12" y="18" width="44" height="50" rx="3"/><path d="M20 32h28M20 42h28M20 52h18"/>' +
+      '<rect class="mask" x="30" y="10" width="44" height="50" rx="3"/><path d="M38 24h28M38 34h28M38 44h18"/>' +
+      '<path d="M92 26c0 16 11 27 27 27l4-8-10-5-4 4c-5-3-8-6-10-10l4-4-5-10-6 6z"/>',
+    a:
+      '<rect x="14" y="12" width="112" height="56" rx="4"/><path d="M14 26h112"/><circle cx="22" cy="19" r="2"/>' +
+      '<path d="M26 38h30M26 50h20"/>' +
+      '<rect x="66" y="34" width="50" height="8" rx="4"/><rect class="fill" x="66" y="34" width="33" height="8" rx="4"/>' +
+      '<path d="M66 54h34"/>'
+  },
+  lot: {
+    b:
+      '<rect x="10" y="16" width="46" height="50" rx="3"/><path d="M18 30h30M18 40h30M18 50h18"/>' +
+      '<rect x="84" y="16" width="46" height="50" rx="3"/><path d="M92 30h30M92 40h30M92 50h18"/>' +
+      '<path class="dash" d="M60 41h20"/>',
+    a:
+      '<path d="M18 30 46 17l28 13v26L46 69 18 56z"/><path d="M18 30l28 13 28-13M46 43v26"/>' +
+      '<rect class="fill" x="88" y="16" width="42" height="17" rx="3"/><path d="M74 30h14"/>' +
+      '<path d="M92 46h34M92 57h24"/><path class="dash" d="M104 33v10"/>'
+  },
+  stk: {
+    b:
+      '<rect x="10" y="18" width="42" height="48" rx="3"/><path d="M18 32h26M18 42h26M18 52h16"/>' +
+      '<path d="M62 36h14M62 48h14"/><path d="M60 52 78 32"/>' +
+      '<path d="M92 66V46M106 66V32M120 66V54"/><path d="M86 66h40"/>',
+    a:
+      '<path d="M12 16v50M66 16v50"/><path d="M12 16h54M12 32h54M12 49h54M12 66h54"/>' +
+      '<rect x="20" y="20" width="16" height="10" rx="1"/><rect x="42" y="36" width="16" height="10" rx="1"/>' +
+      '<rect class="fill" x="20" y="53" width="16" height="11" rx="1"/>' +
+      '<circle cx="80" cy="30" r="2.4"/><circle cx="80" cy="44" r="2.4"/><circle cx="80" cy="58" r="2.4"/>' +
+      '<path d="M88 30h38M88 44h26M88 58h32"/>'
+  },
+  wo: {
+    b:
+      '<rect x="10" y="14" width="66" height="44" rx="3"/><path d="M18 26h42M18 34h30M18 42h38"/>' +
+      '<path d="M43 58v10M31 68h24"/>' +
+      '<path d="M92 18h30a5 5 0 0 1 5 5v15a5 5 0 0 1-5 5h-16l-9 8v-8h-5a5 5 0 0 1-5-5V23a5 5 0 0 1 5-5z"/>' +
+      '<path d="M97 27h20M97 35h12"/>',
+    a:
+      '<rect x="12" y="12" width="116" height="56" rx="4"/><path d="M22 25h34"/>' +
+      '<rect x="22" y="35" width="82" height="8" rx="4"/>' +
+      '<rect class="fill" x="22" y="51" width="56" height="8" rx="4"/>' +
+      '<path d="M110 35h8M110 51h8"/>'
+  },
+  eqp: {
+    b:
+      '<rect x="14" y="16" width="60" height="48" rx="3"/><path d="M22 30h44M22 40h44M22 50h28"/>' +
+      '<path d="M92 54l24-24 8 8-24 24-11 3z"/><path d="M108 30l8 8"/>',
+    a:
+      '<rect x="10" y="40" width="40" height="26" rx="3"/><path d="M20 40V26h20v14"/><circle cx="30" cy="21" r="3.4"/>' +
+      '<path class="dash" d="M54 50h12"/>' +
+      '<path class="fill-none" d="M72 62l12-16 9 9 11-20 12 17"/><path d="M68 68h58"/>'
+  },
+  qc: {
+    b:
+      '<rect x="16" y="14" width="52" height="52" rx="3"/><path d="M26 30h20M26 42h28M26 54h16"/>' +
+      '<path d="M52 24l4 4 8-9"/>' +
+      '<path d="M96 32c0-6 4-9 9-9s9 4 9 9c0 6-6 6-6 12"/><circle cx="108" cy="60" r="2.6"/>',
+    a:
+      '<path d="M20 14l22 8v16c0 12-9 21-22 24-13-3-22-12-22-24V22z" transform="translate(14,2)"/>' +
+      '<path d="M28 44l6 6 12-13" transform="translate(14,2)"/>' +
+      '<path d="M84 66V46M100 66V34M116 66V54"/><path class="fill" d="M82 66h4v-20h-4zM98 66h4V34h-4z"/>' +
+      '<path d="M78 68h48"/><path d="M84 26h34M84 34h20"/>'
+  },
+  do: {
+    b:
+      '<rect x="10" y="30" width="34" height="22" rx="2"/><path d="M44 38h10l8 8v6H44z"/>' +
+      '<circle cx="22" cy="56" r="4.5"/><circle cx="54" cy="56" r="4.5"/>' +
+      '<path class="dash" d="M74 44h10M92 44h10M110 44h10"/><path class="dash" d="M116 37l7 7-7 7"/>',
+    a:
+      '<rect x="10" y="32" width="26" height="24" rx="2"/><path d="M23 32v24"/>' +
+      '<path d="M36 44h10"/><circle class="fill" cx="54" cy="44" r="8"/><path d="M62 44h10"/>' +
+      '<rect x="72" y="32" width="24" height="24" rx="2"/><path d="M78 40h12M78 48h8"/>' +
+      '<path d="M96 44h8"/><circle cx="116" cy="34" r="6"/><path d="M104 60c0-7 5-12 12-12s12 5 12 12"/>'
+  }
+}
+
 const ITEMS = [
   {
     key: 'so',
@@ -182,6 +262,7 @@ function submit() {
                 <svg viewBox="0 0 24 24" v-html="WAY.manual" />
                 지금까지
               </p>
+              <svg class="pic" viewBox="0 0 140 80" v-html="PICS[item.key].b" />
               <p class="txt">{{ item.before }}</p>
             </div>
             <div class="arrow">
@@ -192,6 +273,7 @@ function submit() {
                 <svg viewBox="0 0 24 24" v-html="WAY.auto" />
                 MES에서는
               </p>
+              <svg class="pic" viewBox="0 0 140 80" v-html="PICS[item.key].a" />
               <p class="txt">{{ item.after }}</p>
             </div>
           </div>
@@ -426,8 +508,8 @@ svg {
 }
 
 .board {
-  margin-top: 18px;
-  padding: 22px 24px 18px;
+  margin-top: 16px;
+  padding: 20px 22px 16px;
   border-radius: 20px;
   background: #101d33;
   color: #e7eefa;
@@ -475,7 +557,7 @@ svg {
   grid-template-columns: 1fr 28px 1fr;
   align-items: stretch;
   gap: 6px;
-  padding: 18px 0 16px;
+  padding: 15px 0 14px;
 }
 .col {
   padding: 14px 16px;
@@ -507,6 +589,32 @@ svg {
 }
 .col.after .tag {
   color: #7fb0ff;
+}
+.pic {
+  display: block;
+  width: 100%;
+  max-width: 148px;
+  height: auto;
+  margin: 0 auto 9px;
+  stroke-width: 1.7;
+}
+.before .pic {
+  color: #8496b1;
+}
+.after .pic {
+  color: #8dbaff;
+}
+.pic .mask {
+  fill: #16243c;
+}
+.pic .fill {
+  fill: currentColor;
+  stroke: none;
+  opacity: 0.85;
+}
+.pic .dash {
+  stroke-dasharray: 3.5 4;
+  opacity: 0.6;
 }
 .txt {
   margin: 0;
@@ -557,7 +665,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-top: 16px;
+  margin-top: 13px;
   padding: 0 6px;
 }
 .flow span {
@@ -596,7 +704,7 @@ svg {
   transform: scale(1.22);
 }
 .note {
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   font-size: 12.5px;
   line-height: 1.7;
   color: var(--muted);
