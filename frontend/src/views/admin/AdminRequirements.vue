@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { adminApi } from '../../api/admin'
-import { fileUrl } from '../../api/client'
+import { absoluteUrl } from '../../api/client'
 
 const list = ref([])
 const loading = ref(true)
@@ -73,7 +73,7 @@ function onFile(e) {
 
 async function save() {
   if (!form.value.name.trim()) {
-    modalError.value = '사진 명칭을 입력해주세요.'
+    modalError.value = '자료 명칭을 입력해주세요.'
     return
   }
   saving.value = true
@@ -102,7 +102,7 @@ async function save() {
 }
 
 async function remove(r) {
-  if (!confirm(`'${r.name}' 요구 사진을 삭제할까요?`)) return
+  if (!confirm(`'${r.name}' 요청 자료를 삭제할까요?`)) return
   error.value = ''
   try {
     await adminApi.deleteRequirement(r.id)
@@ -119,10 +119,10 @@ onMounted(load)
   <div>
     <div class="page-head">
       <div>
-        <h1>요구 사진 관리</h1>
-        <p class="page-sub muted">기업에 지정할 수 있는 사진 항목을 등록합니다. 사진 명칭은 중복될 수 없습니다.</p>
+        <h1>요청 자료 관리</h1>
+        <p class="page-sub muted">기업에 지정할 수 있는 자료(사진·문서·기타 파일)를 등록합니다. 자료 명칭은 중복될 수 없습니다.</p>
       </div>
-      <button class="btn" @click="openCreate">+ 요구 사진 등록</button>
+      <button class="btn" @click="openCreate">+ 요청 자료 등록</button>
     </div>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
@@ -132,7 +132,7 @@ onMounted(load)
     <div v-else class="req-grid">
       <div v-for="r in list" :key="r.id" class="req-card">
         <div class="thumb">
-          <img v-if="r.exampleImageUrl" :src="fileUrl(r.exampleImageUrl)" alt="예시" />
+          <img v-if="r.exampleImageUrl" :src="absoluteUrl(r.exampleImageUrl)" alt="예시" />
           <div v-else-if="r.fileType === 'DOCUMENT'" class="no-img">서류 항목</div>
           <div v-else class="no-img">예시 없음</div>
         </div>
@@ -150,15 +150,15 @@ onMounted(load)
           <button class="btn btn-danger btn-sm" @click="remove(r)">삭제</button>
         </div>
       </div>
-      <div v-if="list.length === 0" class="muted">등록된 요구 사진이 없습니다.</div>
+      <div v-if="list.length === 0" class="muted">등록된 요청 자료가 없습니다.</div>
     </div>
 
     <!-- 등록/수정 모달 -->
     <div v-if="showModal" class="modal-mask" @click.self="closeModal">
       <div class="modal">
-        <h3>{{ editing ? '요구 사진 수정' : '요구 사진 등록' }}</h3>
+        <h3>{{ editing ? '요청 자료 수정' : '요청 자료 등록' }}</h3>
 
-        <label class="label">사진 명칭 *</label>
+        <label class="label">자료 명칭 *</label>
         <input v-model="form.name" class="input" placeholder="예: 건물 정면" />
 
         <label class="label" style="margin-top: 14px">설명</label>
@@ -202,7 +202,7 @@ onMounted(load)
             예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}
           </label>
           <div v-if="editing?.exampleImageUrl && !file" class="cur-example">
-            <img :src="fileUrl(editing.exampleImageUrl)" alt="현재 예시" />
+            <img :src="absoluteUrl(editing.exampleImageUrl)" alt="현재 예시" />
             <span class="muted" style="font-size: 13px">현재 등록된 예시</span>
           </div>
           <input ref="fileInput" type="file" accept="image/*" @change="onFile" />

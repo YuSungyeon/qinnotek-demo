@@ -1,11 +1,11 @@
 <script setup>
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { customerApi } from '../../api/customer'
-import { fileUrl } from '../../api/client'
+import { absoluteUrl } from '../../api/client'
 import { classifyToSlots, loadClassifier } from '../../lib/classifier'
 import { compressImage } from '../../lib/resize'
 import { ANY_ACCEPT, kindOf } from '../../lib/filekind'
-import PhotoUploadCard from '../../components/PhotoUploadCard.vue'
+import SubmissionItemCard from '../../components/SubmissionItemCard.vue'
 import DocPreview from '../../components/DocPreview.vue'
 import Icon from '../../components/Icon.vue'
 import { CircleAlert, Inbox, Link2, TimerOff } from 'lucide-vue-next'
@@ -159,7 +159,7 @@ async function classifyPhotos(files) {
     .map((i) => ({
       itemId: i.itemId,
       label: i.classificationHint || i.name,
-      exampleUrl: i.exampleImageUrl ? fileUrl(i.exampleImageUrl) : null
+      exampleUrl: i.exampleImageUrl ? absoluteUrl(i.exampleImageUrl) : null
     }))
   if (!slots.length) return 0
 
@@ -553,7 +553,7 @@ async function submit() {
           </section>
 
           <div class="items">
-            <PhotoUploadCard
+            <SubmissionItemCard
               v-for="(item, idx) in items"
               :key="item.itemId"
               :item="item"
@@ -591,7 +591,7 @@ async function submit() {
         <!-- 위치 바꾸기 바텀시트 -->
         <div v-if="swapSource" class="sheet-mask" @click.self="closeSwap">
           <div class="sheet">
-            <p class="sheet-title">이 사진을 어디로 옮길까요?</p>
+            <p class="sheet-title">이 자료를 어디로 옮길까요?</p>
             <div class="sheet-list">
               <button v-for="row in swapRows" :key="row.itemId" class="sheet-row" @click="doSwap(row.itemId)">
                 <span class="sheet-thumb">
@@ -682,7 +682,7 @@ async function submit() {
 <style scoped>
 /* ---- design.md 토큰: 모노크롬 · 스타디움 필 · 그림자 없는 틴트 계단 ----
    관리자 테마 설정과 무관하게 고객 화면은 이 토큰을 쓴다.
-   공통 컴포넌트(.btn/.card/.input/.alert, PhotoUploadCard)도 변수를 상속받아 같이 바뀐다. */
+   공통 컴포넌트(.btn/.card/.input/.alert, SubmissionItemCard)도 변수를 상속받아 같이 바뀐다. */
 .page {
   --ink: #141414;
   --ink-soft: #262626;

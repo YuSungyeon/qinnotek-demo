@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { fileUrl } from '../api/client'
+import { absoluteUrl } from '../api/client'
 import { formatBytes } from '../lib/filekind'
 import Icon from './Icon.vue'
 
@@ -17,7 +17,7 @@ const statusChip = computed(() => {
 
 // 모바일 Safari 의 iframe PDF 는 첫 페이지만 렌더링되므로 새 탭으로 연다
 function openPdf() {
-  window.open(fileUrl(props.doc.pdfUrl), '_blank', 'noopener')
+  window.open(absoluteUrl(props.doc.pdfUrl), '_blank', 'noopener')
 }
 </script>
 

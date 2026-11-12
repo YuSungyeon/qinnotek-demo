@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { adminApi } from '../../api/admin'
-import { fileUrl } from '../../api/client'
+import { absoluteUrl } from '../../api/client'
 import Icon from '../../components/Icon.vue'
 
 const props = defineProps({ id: { type: String, required: true } })
@@ -48,7 +48,7 @@ const smsMsg = ref('')
 const link = computed(() => company.value?.link || null)
 const linkUrl = computed(() => (link.value ? `${window.location.origin}/s/${link.value.token}` : ''))
 
-// 요구사진 지정
+// 요청 자료 지정
 const selectedReqIds = ref([])
 const savingReq = ref(false)
 const reqMsg = ref('')
@@ -70,7 +70,7 @@ const showDeleteModal = ref(false)
 const deleting = ref(false)
 const deleteError = ref('')
 
-// 요구사진 자세히 모달
+// 요청 자료 자세히 모달
 const reqDetail = ref(null)
 
 // 항목별 추가 설명 모달
@@ -83,10 +83,10 @@ const lightbox = ref('')
 
 const companyId = computed(() => Number(props.id))
 const approvedCount = computed(
-  () => (submission.value?.items || []).filter((i) => i.status === 'APPROVED' && i.photoUrl).length
+  () => (submission.value?.items || []).filter((i) => i.status === 'APPROVED' && i.fileUrl).length
 )
 const zipUrl = computed(() =>
-  fileUrl(`/api/admin/companies/${companyId.value}/submissions/approved-zip`)
+  absoluteUrl(`/api/admin/companies/${companyId.value}/submissions/approved-zip`)
 )
 // 워드/한글 원본 없이 PDF 사본만 받고 싶을 때
 const zipPdfUrl = computed(() => zipUrl.value + '?scope=pdf')
@@ -421,13 +421,13 @@ onMounted(loadAll)
         </template>
       </section>
 
-      <!-- 요구사진 지정 -->
+      <!-- 요청 자료 지정 -->
       <section class="card">
-        <h2 class="ctitle">필요 사진 지정</h2>
-        <p class="muted small">이 기업이 제출할 사진 항목을 선택하세요.</p>
+        <h2 class="ctitle">요청 자료 지정</h2>
+        <p class="muted small">이 기업이 제출할 자료를 선택하세요.</p>
         <div v-if="requirements.length === 0" class="muted">
-          등록된 요구 사진이 없습니다.
-          <RouterLink to="/admin/requirements" class="link">요구 사진 관리 →</RouterLink>
+          등록된 요청 자료가 없습니다.
+          <RouterLink to="/admin/requirements" class="link">요청 자료 관리 →</RouterLink>
         </div>
         <div v-else class="req-list">
           <div v-for="r in requirements" :key="r.id" class="req-item">
@@ -450,10 +450,10 @@ onMounted(loadAll)
 
     </div>
 
-    <!-- 제출 사진 검수 -->
+    <!-- 제출 자료 검수 -->
     <section class="card submissions">
       <div class="sub-head">
-        <h2 class="ctitle">제출 사진 검수</h2>
+        <h2 class="ctitle">제출 자료 검수</h2>
         <div class="sub-head-right">
           <a v-if="approvedCount > 0" class="btn btn-sm zip-btn" :href="zipUrl" download>
             <Icon name="download" :size="16" /> 완료본 ZIP ({{ approvedCount }})
@@ -488,22 +488,22 @@ onMounted(loadAll)
             <div class="doc-box">
               <iframe
                 v-if="item.pdfUrl"
-                :src="fileUrl(item.pdfUrl) + '#toolbar=1&view=FitH'"
+                :src="absoluteUrl(item.pdfUrl) + '#toolbar=1&view=FitH'"
                 class="pdf-frame"
                 :title="item.displayName"
               ></iframe>
-              <div v-else class="no-photo">
+              <div v-else class="no-file">
                 PDF 변환 실패 · 원본만 확인 가능
               </div>
             </div>
             <div class="doc-links">
-              <a class="btn btn-ghost btn-sm" :href="fileUrl(item.originalDownloadUrl)" download>
+              <a class="btn btn-ghost btn-sm" :href="absoluteUrl(item.originalDownloadUrl)" download>
                 <Icon name="download" :size="15" /> 원본
               </a>
               <a
                 v-if="item.pdfDownloadUrl"
                 class="btn btn-ghost btn-sm"
-                :href="fileUrl(item.pdfDownloadUrl)"
+                :href="absoluteUrl(item.pdfDownloadUrl)"
                 download
               >
                 <Icon name="download" :size="15" /> PDF
@@ -512,9 +512,9 @@ onMounted(loadAll)
             </div>
           </template>
 
-          <div v-else class="photo-box" @click="item.photoUrl && (lightbox = fileUrl(item.photoUrl))">
-            <img v-if="item.photoUrl" :src="fileUrl(item.photoUrl)" alt="제출 사진" />
-            <div v-else class="no-photo">{{ item.fileType === 'DOCUMENT' ? '서류 없음' : '사진 없음' }}</div>
+          <div v-else class="file-box" @click="item.fileUrl && (lightbox = absoluteUrl(item.fileUrl))">
+            <img v-if="item.fileUrl" :src="absoluteUrl(item.fileUrl)" alt="제출 사진" />
+            <div v-else class="no-file">미제출</div>
           </div>
 
           <div v-if="item.status === 'RETURNED' && item.rejectReason" class="reject-reason">
@@ -543,7 +543,7 @@ onMounted(loadAll)
     <!-- 반환 모달 -->
     <div v-if="returnTarget" class="modal-mask" @click.self="closeReturn">
       <div class="modal">
-        <h3>사진 반환</h3>
+        <h3>자료 반환</h3>
         <p class="disp-name">{{ returnTarget.displayName }}</p>
         <label class="label">반환 사유 (필수)</label>
         <textarea
@@ -552,7 +552,7 @@ onMounted(loadAll)
           rows="3"
           placeholder="예: 사진이 너무 어둡습니다."
         ></textarea>
-        <div class="warn">⚠ 반환 시 기존 사진은 삭제되며 고객은 다시 촬영해야 합니다.</div>
+        <div class="warn">⚠ 반환 시 기존 파일은 삭제되며 고객은 다시 올려야 합니다.</div>
         <label class="confirm-check">
           <input v-model="returnConfirmed" type="checkbox" />
           <span>위 내용을 확인했습니다.</span>
@@ -639,7 +639,7 @@ onMounted(loadAll)
         <h3>기업 삭제</h3>
         <p class="disp-name">{{ company.name }}</p>
         <div class="warn">
-          ⚠ 삭제하면 이 기업의 제출 항목과 업로드된 사진이 모두 삭제되며 되돌릴 수 없습니다.
+          ⚠ 삭제하면 이 기업의 제출 항목과 업로드된 파일이 모두 삭제되며 되돌릴 수 없습니다.
         </div>
         <div v-if="deleteError" class="alert alert-error" style="margin-top: 12px">{{ deleteError }}</div>
         <div class="modal-actions">
@@ -649,12 +649,12 @@ onMounted(loadAll)
       </div>
     </div>
 
-    <!-- 요구사진 자세히 모달 -->
+    <!-- 요청 자료 자세히 모달 -->
     <div v-if="reqDetail" class="modal-mask" @click.self="reqDetail = null">
       <div class="modal">
         <h3>{{ reqDetail.name }}</h3>
         <div class="req-detail-img" :class="{ empty: !reqDetail.exampleImageUrl }">
-          <img v-if="reqDetail.exampleImageUrl" :src="fileUrl(reqDetail.exampleImageUrl)" alt="예시 이미지" />
+          <img v-if="reqDetail.exampleImageUrl" :src="absoluteUrl(reqDetail.exampleImageUrl)" alt="예시 이미지" />
           <span v-else class="muted">예시 이미지 없음</span>
         </div>
         <label class="label" style="margin-top: 14px">설명</label>
@@ -997,7 +997,7 @@ onMounted(loadAll)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.photo-box {
+.file-box {
   width: 100%;
   aspect-ratio: 1;
   background: #f3f4f6;
@@ -1008,12 +1008,12 @@ onMounted(loadAll)
   justify-content: center;
   cursor: pointer;
 }
-.photo-box img {
+.file-box img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.no-photo {
+.no-file {
   color: var(--text-muted);
   font-size: 14px;
   cursor: default;

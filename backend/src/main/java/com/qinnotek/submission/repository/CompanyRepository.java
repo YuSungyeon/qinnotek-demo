@@ -1,0 +1,24 @@
+package com.qinnotek.submission.repository;
+
+import com.qinnotek.submission.domain.Company;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface CompanyRepository extends JpaRepository<Company, Long> {
+
+    Optional<Company> findByPhoneNumber(String phoneNumber);
+
+    Optional<Company> findByAccessToken(String accessToken);
+
+    boolean existsByName(String name);
+
+    boolean existsByPhoneNumber(String phoneNumber);
+
+    List<Company> findByNameContainingOrderByNameAsc(String name);
+
+    List<Company> findByNameContainingOrPhoneNumberContainingOrderByNameAsc(String name, String phoneNumber);
+
+    List<Company> findAllByOrderByNameAsc();
+}

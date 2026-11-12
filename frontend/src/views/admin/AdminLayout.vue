@@ -5,7 +5,7 @@ import { useReviewNotifications } from '../../composables/useReviewNotifications
 
 const nav = [
   { to: '/admin/companies', icon: 'building', label: '기업 관리', badge: true },
-  { to: '/admin/requirements', icon: 'layers', label: '요구 사진 관리' },
+  { to: '/admin/requirements', icon: 'layers', label: '요청 자료 관리' },
   { to: '/admin/managers', icon: 'user', label: '담당자 관리' },
   { to: '/admin/settings', icon: 'settings', label: '관리자 설정' }
 ]
@@ -17,9 +17,9 @@ const { reviewCompanies, bumped } = useReviewNotifications()
   <div class="admin">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark"><Icon name="camera" :size="21" /></div>
+        <div class="brand-mark"><Icon name="fileText" :size="21" /></div>
         <div class="brand-text">
-          <strong>사진 검수</strong>
+          <strong>자료 검수</strong>
           <span>Admin Console</span>
         </div>
       </div>

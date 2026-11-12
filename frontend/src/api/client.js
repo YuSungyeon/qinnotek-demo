@@ -23,7 +23,7 @@ client.interceptors.response.use(
 )
 
 /** 백엔드가 준 상대 경로(/api/files/xxx)를 절대 URL로 변환 */
-export function fileUrl(path) {
+export function absoluteUrl(path) {
   if (!path) return ''
   if (path.startsWith('http')) return path
   return API_BASE + path

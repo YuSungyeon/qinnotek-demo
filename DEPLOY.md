@@ -134,7 +134,7 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 
 | 항목 | 위치 | 비고 |
 | --- | --- | --- |
-| 항목 유형(사진/문서/무관) | 관리자 → 요구 사진 관리 | '문서'면 고객 화면에 파일 선택기가 뜬다 |
+| 항목 유형(사진/문서/무관) | 관리자 → 요청 자료 관리 | '문서'면 고객 화면에 파일 선택기가 뜬다 |
 | 문서 분류 키워드 | 같은 화면 | 쉼표 구분. 문서 제목에 들어가는 말이 가장 정확하다 |
 | `SOFFICE_BIN` | `/etc/photo-submission.env` | 비우면 자동 탐지 |
 | `DOC_CONVERT_CONCURRENCY` | 같은 파일 | soffice 는 인스턴스당 200~400MB. 작은 EC2 에서는 **1 유지** |

@@ -57,7 +57,7 @@ export const adminApi = {
     return client.delete(`/api/admin/managers/${id}`).then((r) => r.data)
   },
 
-  // 요구 사진(마스터)
+  // 요청 자료(마스터)
   listRequirements() {
     return client.get('/api/admin/requirements').then((r) => r.data)
   },

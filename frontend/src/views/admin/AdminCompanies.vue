@@ -59,7 +59,7 @@ onMounted(load)
     <div class="page-head">
       <div>
         <h1>기업 관리</h1>
-        <p class="page-sub muted">기업별 사진 제출 현황을 확인하고 관리합니다</p>
+        <p class="page-sub muted">기업별 자료 제출 현황을 확인하고 관리합니다</p>
       </div>
       <button class="btn" @click="showCreate = !showCreate">+ 기업 등록</button>
     </div>
