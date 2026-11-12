@@ -2,7 +2,6 @@ package com.qinnotek.photo.controller;
 
 import com.qinnotek.photo.dto.admin.RequirementResponse;
 import com.qinnotek.photo.service.PhotoRequirementService;
-import com.qinnotek.photo.service.RequirementSeeder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +17,6 @@ import java.util.List;
 public class AdminRequirementController {
 
     private final PhotoRequirementService requirementService;
-    private final RequirementSeeder requirementSeeder;
-
-    @Operation(summary = "예시 항목 불러오기",
-            description = "제조 공장 실사용 예시 요구 사진(예시 이미지 포함)을 추가한다. 같은 이름이 이미 있으면 건너뛴다")
-    @PostMapping("/seed")
-    public RequirementSeeder.Result seed() {
-        return requirementSeeder.seed();
-    }
 
     @Operation(summary = "요구 사진 목록")
     @GetMapping

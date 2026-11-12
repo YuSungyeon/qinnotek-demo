@@ -43,7 +43,7 @@ public class DataInitializer implements CommandLineRunner {
         }
         log.info("데모용 초기 데이터 생성");
 
-        // 요구 사진 마스터: 제조 공장 실사 카탈로그 (운영의 '예시 항목 불러오기'와 같은 목록)
+        // 요구 사진 마스터: 제조 공장 실사 카탈로그 (운영에 넣은 것과 같은 목록)
         requirementSeeder.seed();
         PhotoRequirement exterior = req("공장 외관");
         PhotoRequirement line = req("생산 라인");

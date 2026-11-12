@@ -61,10 +61,6 @@ export const adminApi = {
   listRequirements() {
     return client.get('/api/admin/requirements').then((r) => r.data)
   },
-  /** 예시 항목(제조 공장 실사) 추가 - 같은 이름은 건너뛴다. { created: [], skipped: [] } */
-  seedRequirements() {
-    return client.post('/api/admin/requirements/seed').then((r) => r.data)
-  },
   createRequirement({ name, description, classificationHint, fileType, documentKeywords, exampleImage }) {
     const form = new FormData()
     form.append('name', name)
