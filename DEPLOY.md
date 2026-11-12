@@ -173,11 +173,63 @@ sudo systemctl restart photo-submission
 
 > 키/시크릿은 서버 env에만 두고 UI엔 노출하지 않습니다. 발송 실패는 로그로만 남고 제출 흐름은 정상 진행됩니다.
 
+## DB 스키마 변경 (Flyway)
+
+스키마는 `backend/src/main/resources/db/migration/V*.sql` 로만 바꾼다. 앱이 기동할 때 아직 적용하지 않은 파일을
+순서대로 실행하고, Hibernate 는 엔티티와 DB 가 맞는지 검사만 한다(`ddl-auto: validate`). 작성 규칙은 같은 폴더의 `README.md`.
+
+- **Flyway 도입 후 첫 배포**: 기존 운영 DB 는 V1(기준선)을 실행하지 않고 "적용됨"으로만 기록한 뒤 V2 부터 실행한다
+  (`spring.flyway.baseline-on-migrate`). 기존 데이터는 그대로 남는다.
+- **V2** 는 Flyway 도입 전 운영에서 만들어지지 못한 `staged_document` 테이블(문서 임시 올리기)을 만든다.
+  이 테이블이 없어서 문서 올리기가 500 으로 실패하던 문제가 이 배포로 고쳐진다.
+- 마이그레이션이나 스키마 검사가 실패하면 **앱이 기동하지 않는다.** 배포 워크플로가 헬스체크로 이를 잡아
+  배포를 실패로 표시하고 최근 로그를 출력한다. 서버에서 직접 볼 때:
+
+```bash
+sudo journalctl -u photo-submission -n 200 --no-pager | grep -iE "flyway|Schema-validation|ERROR"
+mysql -u root -p photodb -e "SELECT version, description, success, installed_on FROM flyway_schema_history;"
+```
+
+## 헬스체크 · 장애 알림
+
+### 헬스체크 주소
+
+`GET https://api.qinnotek.minisub.store/actuator/health`
+
+| 응답 | 뜻 |
+| --- | --- |
+| `200` `{"status":"UP", ...}` | 정상 |
+| `503` `{"status":"DOWN"}` | 앱은 떠 있지만 아래 중 하나가 실패: DB 연결, 디스크 여유(업로드 폴더 디스크 500MB 미만), 업로드 폴더 쓰기 |
+| `502` / `504` (nginx) | 앱 프로세스가 죽었거나 기동 중 |
+| 연결 실패 / 타임아웃 | EC2 또는 nginx 가 내려감 |
+
+- 외부에는 상태만 보이고 세부 내용(디스크 용량, DB 종류 등)은 숨긴다. 원인은 서버 로그에 WARN 으로 남는다:
+  `sudo journalctl -u photo-submission -n 200 --no-pager | grep -i "health"`
+- `/actuator/health/liveness`(프로세스 생존), `/actuator/health/readiness`(요청 받을 준비)도 있다.
+- `health` 외의 Actuator 엔드포인트(`env`, `beans` 등)는 웹에 노출하지 않는다.
+- 배포 워크플로는 재기동 뒤 이 주소가 200 이 될 때까지 최대 120초 기다린다.
+
+### 장애 알림 설정 (외부 가동 모니터링, 최초 1회)
+
+앱이 죽으면 앱 스스로는 알릴 수 없으므로 **바깥에서 주기적으로 확인하는 서비스**를 쓴다.
+아래는 무료인 UptimeRobot 기준이다 (Better Stack, Cronitor 등도 같은 방식).
+
+1. https://uptimerobot.com 가입 → **Add New Monitor**
+2. Monitor Type: **HTTP(s)** (또는 응답 본문까지 보려면 **Keyword**, 키워드 `"UP"`, *exists* 일 때 정상)
+3. URL: `https://api.qinnotek.minisub.store/actuator/health`
+4. Monitoring Interval: **5분** (무료 플랜 최소값)
+5. Alert Contacts: 담당자 이메일 / 휴대폰 앱 푸시 / Slack 등 추가
+6. (선택) 프론트도 같은 방식으로 `https://qinnotek.minisub.store` 를 추가
+
+알림을 받으면: `sudo systemctl status photo-submission` → `sudo journalctl -u photo-submission -n 200 --no-pager`
+순서로 원인을 본다. 앱 로그에서 `ERROR` 는 서버 쪽 문제만 남는다(요청 오류는 4xx·WARN 이하로 분리돼 있음).
+
 ## 운영 명령 모음
 
 ```bash
 sudo systemctl status photo-submission      # 앱 상태
 sudo journalctl -u photo-submission -f       # 앱 로그
+curl -s localhost:8080/actuator/health       # 헬스체크 (서버 안에서)
 sudo systemctl restart photo-submission      # 재기동
 sudo nginx -t && sudo systemctl reload nginx # nginx 설정 검증/reload
 sudo certbot renew --dry-run                 # 인증서 갱신 테스트

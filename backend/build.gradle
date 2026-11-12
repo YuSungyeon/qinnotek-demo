@@ -6,7 +6,7 @@ plugins {
 
 group = 'com.qinnotek'
 version = '0.0.1-SNAPSHOT'
-description = '사진 제출 및 검수 시스템'
+description = '자료 제출 및 검수 시스템'
 
 java {
     toolchain {
@@ -28,6 +28,12 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // 헬스체크: /actuator/health (외부 가동 모니터링·배포 후 기동 확인용). 노출 범위는 application.yml management.*
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // DB 스키마 마이그레이션: src/main/resources/db/migration/V*.sql (작성 규칙은 같은 폴더 README.md)
+    implementation 'org.flywaydb:flyway-core'
+    // Flyway 10 부터 MySQL 지원이 별도 모듈로 분리됐다 (없으면 운영 MySQL 에서 기동 실패)
+    implementation 'org.flywaydb:flyway-mysql'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
     implementation 'com.solapi:sdk:1.0.3'
     // 문서 분류용 텍스트 추출 (LibreOffice 로 변환한 PDF 에서 추출)

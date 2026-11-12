@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
  * 자료 명칭은 중복 불가(unique).
  *
  * <p>테이블명 photo_requirement 는 사진만 받던 시절 이름이지만 그대로 둔다.
- * ddl-auto:update 는 이름을 바꾸면 새 빈 테이블을 만들어 운영 데이터가 끊기므로,
- * 바꾸려면 별도 마이그레이션(RENAME TABLE)과 함께 해야 한다. (README 용어 정리 참고)
+ * 바꾸려면 Flyway 마이그레이션(RENAME TABLE)과 이 @Table 변경을 한 배포에 함께 넣는다.
+ * (db/migration/README.md "예: 테이블 이름 바꾸기")
  */
 @Entity
 @Table(name = "photo_requirement")
@@ -40,8 +40,10 @@ public class Requirement {
 
     /**
      * 받는 파일 유형. nullable 로 두고 getter 에서 PHOTO 를 기본값으로 준다.
-     * ddl-auto:update 는 NOT NULL 컬럼을 기존 행이 있는 테이블에 추가할 때 빈 문자열을 채워 넣어
-     * enum 역직렬화가 깨지므로, 하위호환은 반드시 이 방식으로 처리한다.
+     * (Flyway 도입 전) ddl-auto:update 가 NOT NULL 컬럼을 기존 행이 있는 테이블에 추가하면서 빈 문자열을 채워
+     * enum 역직렬화가 깨진 적이 있어, 운영 DB 에는 file_type 이 null 인 옛 행이 남아 있을 수 있다.
+     * 그래서 컬럼은 nullable 로 두고 getter 에서 PHOTO 로 읽는다. NOT NULL 로 바꾸려면 마이그레이션에서
+     * 먼저 UPDATE ... SET file_type='PHOTO' WHERE file_type IS NULL 을 해야 한다.
      */
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

@@ -22,15 +22,15 @@
 | 제출 링크 | `Company.accessToken` | 컬럼 `access_token` | 고객이 접속하는 `/s/{토큰}` |
 | 제출 자료 검수 | `AdminSubmissionService` | — | 통과 / 반환(사유 필수) |
 
-※ `photo_requirement` 는 사진만 받던 시절의 테이블명이다. `ddl-auto: update` 는 이름이 바뀌면 새 빈 테이블을
-만들어 운영 데이터가 끊기므로 그대로 두었다. 바꾸려면 `RENAME TABLE photo_requirement TO requirement` 와
-`@Table` 변경을 한 배포에 함께 넣어야 한다. 서버의 서비스·경로 이름(`photo-submission`)도 같은 이유로 유지한다.
+※ `photo_requirement` 는 사진만 받던 시절의 테이블명이다. 바꾸려면 Flyway 마이그레이션
+(`RENAME TABLE photo_requirement TO requirement`)과 `@Table` 변경을 한 배포에 함께 넣는다
+(`backend/src/main/resources/db/migration/README.md`). 서버의 서비스·경로 이름(`photo-submission`)은 서버 설정과 함께 바꿔야 해서 유지한다.
 
 ## 기술 스택
 
 | 구분 | 스택 |
 | --- | --- |
-| 백엔드 | Spring Boot 3.3, Java 17, Spring Data JPA, MySQL(운영) / H2(로컬), springdoc-openapi(Swagger) |
+| 백엔드 | Spring Boot 3.3, Java 17, Spring Data JPA, MySQL(운영) / H2(로컬), Flyway(스키마 마이그레이션), Actuator(헬스체크), springdoc-openapi(Swagger) |
 | 프론트 | Vue 3, Vite, Vue Router, Axios |
 | 파일 저장 | EC2 로컬 파일시스템 (UUID 파일명) |
 | 배포 | 프론트 → Vercel, 백엔드 → EC2 |
@@ -67,6 +67,8 @@ cd backend
 
 - API: http://localhost:8080
 - **Swagger UI: http://localhost:8080/swagger-ui.html**
+- 헬스체크: http://localhost:8080/actuator/health
+- DB 스키마는 기동 시 Flyway 가 `db/migration/V*.sql` 로 만든다 (Hibernate 는 검사만 함)
 - OpenAPI 문서: http://localhost:8080/v3/api-docs
 - 데모 데이터 자동 생성 — 기업별 제출 링크가 기동 로그에 출력됨 (`초기 데이터 생성 완료 - 제출 링크: …`)
 

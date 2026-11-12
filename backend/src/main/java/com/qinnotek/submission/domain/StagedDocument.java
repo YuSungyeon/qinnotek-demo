@@ -50,8 +50,14 @@ public class StagedDocument {
     @Column(length = 500)
     private String failureMessage;
 
-    /** 분류용 추출 텍스트. MySQL 에서 TEXT 로 매핑된다 (DocumentTextExtractor 가 12,000자로 자름) */
-    @Column(length = 20000)
+    /**
+     * 분류용 추출 텍스트 (DocumentTextExtractor 가 12,000자로 자른다).
+     *
+     * <p>컬럼 타입을 text 로 못 박는다. 예전처럼 length = 20000 으로만 두면 Hibernate 가 실제 MySQL 에 붙었을 때
+     * varchar(20000) 을 만들려 하는데, utf8mb4 의 varchar 한도(16,383자)를 넘어 테이블 생성이 실패했다.
+     * (ddl-auto:update 는 이 실패를 WARN 로그로만 남겨 staged_document 테이블이 없는 채로 기동됐다 → V2 마이그레이션)
+     */
+    @Column(columnDefinition = "text")
     private String extractedText;
 
     @Enumerated(EnumType.STRING)

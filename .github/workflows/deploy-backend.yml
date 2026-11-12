@@ -75,9 +75,23 @@ jobs:
               || echo "경고: LibreOffice 미설치 - 문서는 원본만 저장됩니다. deploy/libreoffice-setup.sh 를 실행하세요."
 
             sudo systemctl restart photo-submission
-            sleep 5
-            sudo systemctl is-active photo-submission
-            echo "배포 완료: $(date)"
+
+            # 기동 확인: 프로세스가 떠 있는지(is-active)가 아니라 실제로 요청을 받을 수 있는지 본다.
+            # /actuator/health 가 200(UP)이 될 때까지 최대 120초 기다린다.
+            # Flyway 마이그레이션 실패나 스키마 검사(ddl-auto:validate) 실패로 앱이 뜨지 못하면
+            # 여기서 배포를 실패로 표시하고, 원인을 볼 수 있게 최근 로그를 남긴다.
+            for i in $(seq 1 60); do
+              if curl -sf -o /dev/null http://127.0.0.1:8080/actuator/health; then
+                echo "헬스체크 UP (${i}회째 확인)"
+                echo "배포 완료: $(date)"
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "::error::앱이 120초 안에 UP 이 되지 않았습니다. 최근 로그:"
+            sudo journalctl -u photo-submission -n 80 --no-pager || true
+            curl -s http://127.0.0.1:8080/actuator/health || true
+            exit 1
         env:
           SMS_ENABLED: ${{ vars.SMS_ENABLED }}
           SOLAPI_API_KEY: ${{ secrets.SOLAPI_API_KEY }}
