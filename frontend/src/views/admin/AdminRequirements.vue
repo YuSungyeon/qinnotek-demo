@@ -16,6 +16,27 @@ const fileInput = ref(null)
 const saving = ref(false)
 const modalError = ref('')
 
+// 예시 항목 불러오기 (같은 이름은 서버가 건너뛴다)
+const seeding = ref(false)
+const seedMsg = ref('')
+async function seedExamples() {
+  if (!window.confirm('제조 공장 실사용 예시 항목 14개를 추가합니다. 같은 이름이 이미 있는 항목은 건너뜁니다.')) return
+  seeding.value = true
+  seedMsg.value = ''
+  error.value = ''
+  try {
+    const { created, skipped } = await adminApi.seedRequirements()
+    seedMsg.value = created.length
+      ? `${created.length}개 추가${skipped.length ? `, ${skipped.length}개는 이미 있어 건너뜀` : ''}`
+      : '추가할 항목이 없습니다. 모두 이미 등록되어 있어요.'
+    await load()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    seeding.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -122,8 +143,12 @@ onMounted(load)
         <h1>요구 사진 관리</h1>
         <p class="page-sub muted">기업에 지정할 수 있는 사진 항목을 등록합니다. 사진 명칭은 중복될 수 없습니다.</p>
       </div>
-      <button class="btn" @click="openCreate">+ 요구 사진 등록</button>
+      <div class="head-actions">
+        <button class="btn btn-ghost" :disabled="seeding" @click="seedExamples">예시 항목 불러오기</button>
+        <button class="btn" @click="openCreate">+ 요구 사진 등록</button>
+      </div>
     </div>
+    <div v-if="seedMsg" class="alert alert-info" style="margin-bottom: 16px">{{ seedMsg }}</div>
 
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
 
@@ -243,6 +268,12 @@ onMounted(load)
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
+}
+.head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 .page-head h1 {
   font-size: 25px;

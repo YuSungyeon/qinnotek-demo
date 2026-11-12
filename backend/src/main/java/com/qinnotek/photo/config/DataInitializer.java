@@ -4,13 +4,13 @@ import com.qinnotek.photo.domain.Company;
 import com.qinnotek.photo.domain.CompanyManager;
 import com.qinnotek.photo.domain.Manager;
 import com.qinnotek.photo.domain.PhotoRequirement;
-import com.qinnotek.photo.domain.RequirementFileType;
 import com.qinnotek.photo.domain.SubmissionItem;
 import com.qinnotek.photo.repository.CompanyManagerRepository;
 import com.qinnotek.photo.repository.CompanyRepository;
 import com.qinnotek.photo.repository.ManagerRepository;
 import com.qinnotek.photo.repository.PhotoRequirementRepository;
 import com.qinnotek.photo.repository.SubmissionItemRepository;
+import com.qinnotek.photo.service.RequirementSeeder;
 import com.qinnotek.photo.util.LinkTokens;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +34,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SubmissionItemRepository submissionItemRepository;
     private final ManagerRepository managerRepository;
     private final CompanyManagerRepository companyManagerRepository;
+    private final RequirementSeeder requirementSeeder;
 
     @Override
     public void run(String... args) {
@@ -42,59 +43,68 @@ public class DataInitializer implements CommandLineRunner {
         }
         log.info("데모용 초기 데이터 생성");
 
-        PhotoRequirement front = requirementRepository.save(
-                new PhotoRequirement("건물 정면", "건물 전체가 나오도록 정면에서 촬영해주세요.",
-                        "the exterior facade of a building seen from outside", null));
-        PhotoRequirement signboard = requirementRepository.save(
-                new PhotoRequirement("간판", "간판 상호가 선명하게 보이도록 촬영해주세요.",
-                        "a storefront signboard with shop name text", null));
-        PhotoRequirement interior = requirementRepository.save(
-                new PhotoRequirement("내부 전경", "매장 내부가 잘 보이도록 촬영해주세요.",
-                        "the indoor interior of a store or room", null));
-        // 문서 항목 - 사진 촬영본도 받을 수 있도록 ANY, 서버 텍스트 분류용 키워드 지정
-        PhotoRequirement license = requirementRepository.save(
-                new PhotoRequirement("사업자등록증", "사업자등록증 사본(파일) 또는 전체가 나오도록 촬영한 사진을 올려주세요.",
-                        "a paper document certificate with printed text", null,
-                        RequirementFileType.ANY, "사업자등록증,등록번호,대표자,개업연월일,사업장소재지"));
-        PhotoRequirement lease = requirementRepository.save(
-                new PhotoRequirement("임대차계약서", "임대차계약서 파일을 올려주세요. (워드/한글/PDF 가능)",
-                        null, null,
-                        RequirementFileType.DOCUMENT, "임대차계약서,임대인,임차인,보증금,월세,계약기간"));
+        // 요구 사진 마스터: 제조 공장 실사 카탈로그 (운영의 '예시 항목 불러오기'와 같은 목록)
+        requirementSeeder.seed();
+        PhotoRequirement exterior = req("공장 외관");
+        PhotoRequirement line = req("생산 라인");
+        PhotoRequirement nameplate = req("설비 명판");
+        PhotoRequirement warehouse = req("자재 창고");
+        PhotoRequirement finished = req("완제품 적재");
+        PhotoRequirement inspection = req("품질 검사 장비");
+        PhotoRequirement fireSafety = req("소방 설비");
+        PhotoRequirement bizLicense = req("사업자등록증");
+        PhotoRequirement factoryReg = req("공장등록증명서");
+        PhotoRequirement iso = req("ISO 인증서");
+        PhotoRequirement equipmentList = req("설비 목록");
+        PhotoRequirement processFlow = req("공정 흐름도");
 
-        Company a = new Company("가나상사");
+        // ---- 기업 ----
+        Company a = new Company("한빛정밀(주)");
         a.changePhoneNumber("01012345678");
         a.issueLink(LinkTokens.generate(), null);
         a = companyRepository.save(a);
-        Company b = new Company("다라마트");
+        Company b = new Company("대성금속(주)");
         b.changePhoneNumber("01055556666");
         b.issueLink(LinkTokens.generate(), null);
         b = companyRepository.save(b);
-        companyRepository.save(new Company("전화번호미등록업체"));
+        companyRepository.save(new Company("미래플라스틱")); // 요청 전 - 링크·항목 없음
 
-        // 가나상사: 사진 3 + 문서 2 (사진/문서 혼합 제출 시나리오)
+        // 한빛정밀: 신규 거래 실사 - 현장 사진 4 + 증명서 2 + 파일 1 (사진/문서 혼합 시나리오)
         submissionItemRepository.saveAll(List.of(
-                new SubmissionItem(a, front),
-                new SubmissionItem(a, signboard),
-                new SubmissionItem(a, interior),
-                new SubmissionItem(a, license),
-                new SubmissionItem(a, lease)
+                new SubmissionItem(a, exterior),
+                new SubmissionItem(a, line),
+                new SubmissionItem(a, nameplate),
+                new SubmissionItem(a, warehouse),
+                new SubmissionItem(a, bizLicense),
+                new SubmissionItem(a, factoryReg),
+                new SubmissionItem(a, equipmentList)
         ));
-        // 다라마트: 2개 항목 지정
+        // 대성금속: 품질 점검 - 사진 3 + 인증서 1 + 파일 1
         submissionItemRepository.saveAll(List.of(
-                new SubmissionItem(b, front),
-                new SubmissionItem(b, signboard)
+                new SubmissionItem(b, inspection),
+                new SubmissionItem(b, finished),
+                new SubmissionItem(b, fireSafety),
+                new SubmissionItem(b, iso),
+                new SubmissionItem(b, processFlow)
         ));
+        // safetySign, production 은 지정하지 않은 채로 둔다 (관리자 화면에서 추가 지정 테스트용)
 
         // 담당자 마스터 + 기업별 지정
-        Manager m1 = managerRepository.save(new Manager("김점장", "점장", "01011112222"));
-        Manager m2 = managerRepository.save(new Manager("이사장", "대표", "01033334444"));
-        managerRepository.save(new Manager("박대리", "대리", "01055557777"));
+        Manager m1 = managerRepository.save(new Manager("김현우", "구매팀장", "01011112222"));
+        Manager m2 = managerRepository.save(new Manager("이서연", "품질팀장", "01033334444"));
+        managerRepository.save(new Manager("박준호", "생산관리 대리", "01055557777"));
         companyManagerRepository.saveAll(List.of(
                 new CompanyManager(a, m1),
-                new CompanyManager(a, m2)
+                new CompanyManager(a, m2),
+                new CompanyManager(b, m2)
         ));
 
-        log.info("초기 데이터 생성 완료 - 제출 링크: {} → http://localhost:5173/s/{}, {} → http://localhost:5173/s/{}",
+        log.info("초기 데이터 생성 완료 - 요구 항목 {}개, 제출 링크: {} → http://localhost:5173/s/{}, {} → http://localhost:5173/s/{}",
+                requirementRepository.count(),
                 a.getName(), a.getAccessToken(), b.getName(), b.getAccessToken());
+    }
+
+    private PhotoRequirement req(String name) {
+        return requirementRepository.findByName(name).orElseThrow();
     }
 }
