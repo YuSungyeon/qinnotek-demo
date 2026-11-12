@@ -8,10 +8,14 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/opt/photo-submission
 EnvironmentFile=/etc/photo-submission.env
+# LibreOffice 는 쓰기 가능한 HOME 이 없으면 변환이 조용히 실패한다
+Environment=HOME=/opt/photo-submission
 ExecStart=/usr/bin/java -jar /opt/photo-submission/app.jar --spring.profiles.active=prod
 SuccessExitStatus=143
 Restart=always
 RestartSec=5
+# 변환 중인 soffice 프로세스가 정리될 시간을 준다
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target

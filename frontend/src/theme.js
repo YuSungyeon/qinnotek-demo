@@ -11,6 +11,18 @@ const KR = "'Pretendard Variable', Pretendard, 'Apple SD Gothic Neo', 'Malgun Go
 
 // design/*.md 에서 추출한 기업 디자인 토큰
 export const DESIGNS = {
+  // design.md (갤러리 화이트 모노크롬) — 고객 화면과 같은 토큰
+  mono: {
+    name: '모노크롬',
+    primary: '#141414', dark: '#262626', soft: '#f3f3f3',
+    text: '#141414', muted: '#707070',
+    border: '#f0f0f0', borderStrong: '#e0e0e0',
+    bg: '#ffffff', card: '#ffffff',
+    radius: '24px', radiusSm: '16px', btnRadius: '9999px',
+    shadowSm: 'none', shadowMd: 'none',
+    font: `${KR}, -apple-system, 'Helvetica Neue', Arial, sans-serif`,
+    side: { bg: '#141414', text: '#adadad', activeBg: '#ffffff', activeText: '#141414', hover: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.06)', brandBg: '#262626' }
+  },
   apple: {
     name: 'Apple',
     primary: '#0066cc', dark: '#004a99', soft: '#e6f0fb',
@@ -49,6 +61,7 @@ export const DESIGNS = {
 // 설정 화면용 메타(스와치)
 export const DESIGN_META = [
   { id: 'base', name: '기본', colors: ['#2563eb', '#0f172a', '#eff4ff'] },
+  { id: 'mono', name: '모노크롬', colors: ['#141414', '#707070', '#f3f3f3'] },
   { id: 'apple', name: 'Apple', colors: ['#0066cc', '#1d1d1f', '#f5f5f7'] },
   { id: 'figma', name: 'Figma', colors: ['#000000', '#ff3d8b', '#dceeb1'] },
   { id: 'airtable', name: 'Airtable', colors: ['#181d26', '#1b61c9', '#f5e9d4'] }

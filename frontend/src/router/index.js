@@ -9,7 +9,14 @@ import AdminManagers from '../views/admin/AdminManagers.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
 
 const routes = [
-  { path: '/', name: 'customer', component: CustomerView },
+  // 고객은 관리자가 보낸 제출 링크(/s/토큰)로만 들어온다
+  { path: '/', name: 'customer-home', component: CustomerView },
+  { path: '/s/:token', name: 'customer', component: CustomerView, props: true },
+  {
+    path: '/example',
+    name: 'example',
+    component: () => import('../views/example/MesFlowView.vue')
+  },
   {
     path: '/example2',
     name: 'example2',
@@ -44,6 +51,11 @@ const routes = [
     path: '/example8',
     name: 'example8',
     component: () => import('../views/example/LoginStoryIcon.vue')
+  },
+  {
+    path: '/example9',
+    name: 'example9',
+    component: () => import('../views/example/LinkAccess.vue')
   },
   {
     path: '/admin',

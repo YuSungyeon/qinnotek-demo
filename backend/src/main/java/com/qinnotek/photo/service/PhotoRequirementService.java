@@ -1,6 +1,7 @@
 package com.qinnotek.photo.service;
 
 import com.qinnotek.photo.domain.PhotoRequirement;
+import com.qinnotek.photo.domain.RequirementFileType;
 import com.qinnotek.photo.dto.admin.RequirementResponse;
 import com.qinnotek.photo.exception.BusinessException;
 import com.qinnotek.photo.repository.PhotoRequirementRepository;
@@ -37,6 +38,7 @@ public class PhotoRequirementService {
 
     @Transactional
     public RequirementResponse create(String name, String description, String classificationHint,
+                                      String fileType, String documentKeywords,
                                       MultipartFile exampleImage) {
         if (requirementRepository.existsByName(name)) {
             throw BusinessException.conflict("이미 존재하는 사진 명칭입니다: " + name);
@@ -46,18 +48,20 @@ public class PhotoRequirementService {
             exampleFileName = fileStorageService.store(exampleImage).storedFileName();
         }
         PhotoRequirement saved = requirementRepository.save(
-                new PhotoRequirement(name, description, classificationHint, exampleFileName));
+                new PhotoRequirement(name, description, classificationHint, exampleFileName,
+                        RequirementFileType.from(fileType), documentKeywords));
         return RequirementResponse.from(saved);
     }
 
     @Transactional
     public RequirementResponse update(Long id, String name, String description, String classificationHint,
+                                      String fileType, String documentKeywords,
                                       MultipartFile exampleImage) {
         PhotoRequirement req = getOrThrow(id);
         if (!req.getName().equals(name) && requirementRepository.existsByName(name)) {
             throw BusinessException.conflict("이미 존재하는 사진 명칭입니다: " + name);
         }
-        req.update(name, description, classificationHint);
+        req.update(name, description, classificationHint, RequirementFileType.from(fileType), documentKeywords);
         if (exampleImage != null && !exampleImage.isEmpty()) {
             String old = req.getExampleImageFileName();
             String newFile = fileStorageService.store(exampleImage).storedFileName();

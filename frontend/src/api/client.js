@@ -16,7 +16,9 @@ client.interceptors.response.use(
       err.response?.data?.message ||
       err.message ||
       '요청 처리 중 오류가 발생했습니다.'
-    return Promise.reject(new Error(message))
+    const error = new Error(message)
+    error.status = err.response?.status // 404(없는 링크) / 410(기간 지난 링크) 구분용
+    return Promise.reject(error)
   }
 )
 

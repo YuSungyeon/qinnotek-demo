@@ -30,6 +30,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
     implementation 'com.solapi:sdk:1.0.3'
+    // 문서 분류용 텍스트 추출 (LibreOffice 로 변환한 PDF 에서 추출)
+    implementation 'org.apache.pdfbox:pdfbox:3.0.3'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.h2database:h2'

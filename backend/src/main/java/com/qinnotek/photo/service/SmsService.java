@@ -1,6 +1,7 @@
 package com.qinnotek.photo.service;
 
 import com.qinnotek.photo.config.AppProperties;
+import com.qinnotek.photo.exception.BusinessException;
 import com.qinnotek.photo.repository.CompanyManagerRepository;
 import com.solapi.sdk.SolapiClient;
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
@@ -71,6 +72,39 @@ public class SmsService {
             }
         }
         log.info("[SMS] '{}' 담당자 알림 발송 {}/{}건", companyName, ok, recipients.size());
+    }
+
+    /**
+     * 고객에게 제출 링크를 보낸다. 관리자가 직접 누른 발송이라 실패하면 예외로 알린다.
+     * (발송 토글은 '제출 알림'용이라 여기에는 적용하지 않는다)
+     */
+    public void sendLink(String to, String companyName, String url) {
+        var sms = appProperties.getSms();
+        if (isBlank(sms.getApiKey()) || isBlank(sms.getApiSecret())) {
+            throw BusinessException.badRequest("문자 발송이 설정되지 않았습니다. 링크를 복사해서 전달해주세요.");
+        }
+        if (isBlank(sms.getSenderNumber())) {
+            throw BusinessException.badRequest("발신번호가 설정되지 않았습니다. 링크를 복사해서 전달해주세요.");
+        }
+        Message message = new Message();
+        message.setFrom(sms.getSenderNumber());
+        message.setTo(to);
+        // 링크가 길어 단문(45자)을 넘으므로 Solapi 가 장문(LMS)으로 보낸다
+        message.setText("[" + companyName + "] 자료 제출 링크입니다.\n" + url);
+        try {
+            SolapiClient.INSTANCE.createInstance(sms.getApiKey(), sms.getApiSecret()).send(message);
+            log.info("[SMS] '{}' 제출 링크 발송 → {}", companyName, mask(to));
+        } catch (SolapiMessageNotReceivedException e) {
+            log.error("[SMS] 링크 발송 실패({}): {}", mask(to), e.getFailedMessageList());
+            throw BusinessException.badRequest("문자를 보내지 못했습니다. 번호를 확인해주세요.");
+        } catch (Exception e) {
+            log.error("[SMS] 링크 발송 오류({}): {}", mask(to), e.getMessage());
+            throw BusinessException.badRequest("문자를 보내지 못했습니다: " + e.getMessage());
+        }
+    }
+
+    private String mask(String phone) {
+        return phone.length() < 8 ? phone : phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 
     private boolean isBlank(String s) {

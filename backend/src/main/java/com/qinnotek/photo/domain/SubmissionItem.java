@@ -54,6 +54,19 @@ public class SubmissionItem {
     /** 업로드 일시 */
     private LocalDateTime uploadedAt;
 
+    /** PDF 사본 저장 파일명. 원본이 이미 PDF 면 storedFileName 과 같다. 사진/변환실패면 null */
+    private String pdfFileName;
+
+    /** PDF 사본 생성 상태. 사진이면 null */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ConversionStatus pdfStatus;
+
+    /** 실제 제출된 파일 종류. null(레거시 행)은 PHOTO 로 본다 */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ContentKind contentKind;
+
     public SubmissionItem(Company company, PhotoRequirement requirement) {
         this.company = company;
         this.requirement = requirement;
@@ -66,6 +79,27 @@ public class SubmissionItem {
         this.originalFileName = originalFileName;
         this.storagePath = storagePath;
         this.uploadedAt = LocalDateTime.now();
+        // 문서를 올렸다가 사진으로 교체하는 경우 이전 PDF 참조가 남지 않도록 초기화한다
+        this.contentKind = ContentKind.PHOTO;
+        this.pdfFileName = null;
+        this.pdfStatus = null;
+    }
+
+    /** 문서 첨부/교체. pdfFileName 이 null 이면 변환 실패로 원본만 보관한다. */
+    public void attachDocument(String storedFileName, String originalFileName, String storagePath,
+                               String pdfFileName, ConversionStatus pdfStatus) {
+        this.storedFileName = storedFileName;
+        this.originalFileName = originalFileName;
+        this.storagePath = storagePath;
+        this.uploadedAt = LocalDateTime.now();
+        this.contentKind = ContentKind.DOCUMENT;
+        this.pdfFileName = pdfFileName;
+        this.pdfStatus = pdfStatus;
+    }
+
+    /** null(레거시 행)은 사진으로 본다. */
+    public ContentKind getContentKind() {
+        return contentKind == null ? ContentKind.PHOTO : contentKind;
     }
 
     /** 고객이 제출 확정 → 검수 대기 상태로 전환(반환 사유 초기화) */
@@ -79,7 +113,7 @@ public class SubmissionItem {
         this.status = SubmissionStatus.APPROVED;
     }
 
-    /** 관리자 반환 - 기존 사진 정보 삭제, 반환 사유 저장 */
+    /** 관리자 반환 - 기존 제출본 정보 삭제, 반환 사유 저장 */
     public void markReturned(String reason) {
         this.status = SubmissionStatus.RETURNED;
         this.rejectReason = reason;
@@ -87,6 +121,9 @@ public class SubmissionItem {
         this.originalFileName = null;
         this.storagePath = null;
         this.uploadedAt = null;
+        this.pdfFileName = null;
+        this.pdfStatus = null;
+        this.contentKind = null;
     }
 
     /** 기업별 추가 설명 저장/삭제 */
@@ -96,6 +133,11 @@ public class SubmissionItem {
 
     public boolean hasPhoto() {
         return storedFileName != null;
+    }
+
+    /** PDF 사본으로 열람 가능한지 */
+    public boolean hasPdfCopy() {
+        return pdfFileName != null;
     }
 
     /** 고객이 지금 제출해야 하는 대상 항목인지 (미제출 또는 반환) */

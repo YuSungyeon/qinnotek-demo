@@ -25,8 +25,8 @@ server {
     listen 80;
     server_name ${API_DOMAIN};
 
-    # 이미지 업로드 대비 (백엔드 multipart 최대 20MB)
-    client_max_body_size 25M;
+    # 이미지/문서 업로드 대비 (백엔드 multipart 최대 30MB)
+    client_max_body_size 40M;
 
     location / {
         proxy_pass http://127.0.0.1:8080;

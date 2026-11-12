@@ -76,10 +76,15 @@ bash deploy/ec2-setup.sh              # 출력되는 DB_PASSWORD 보관
 # (b) nginx 리버스 프록시 + HTTPS  (DNS A 레코드 전파 후 실행)
 API_DOMAIN=api.qinnotek.minisub.store LE_EMAIL=your-email@example.com \
   bash deploy/nginx-setup.sh
+
+# (c) 문서 → PDF 변환기 (워드/한글/엑셀/PPT 를 받으려면 필수)
+bash deploy/libreoffice-setup.sh
 ```
 
 - `ec2-setup.sh`: CORS 기본값이 `https://qinnotek.minisub.store` 로 설정됨 (`/etc/photo-submission.env`)
 - `nginx-setup.sh`: `api.qinnotek.minisub.store` 에 대해 nginx 프록시 + certbot 인증서 발급/자동갱신
+- `libreoffice-setup.sh`: LibreOffice headless + **한글 폰트** 설치 후 한글 변환 스모크 테스트까지 수행.
+  **미설치여도 앱은 정상 동작**하며, 문서는 원본만 저장되고 PDF 사본은 만들어지지 않는다.
 
 ## 4. 백엔드 첫 배포
 
@@ -116,6 +121,33 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 - [ ] DNS 전파 확인 후 `deploy/nginx-setup.sh` 실행 (HTTPS 발급)
 - [ ] main push / Run workflow → `https://api.qinnotek.minisub.store/swagger-ui.html` 확인
 - [ ] Vercel 연결 + `VITE_API_BASE` + 커스텀 도메인 `qinnotek.minisub.store`
+- [ ] `deploy/libreoffice-setup.sh` 실행 (문서 PDF 변환) — `soffice --version` 과 한글 스모크 테스트 통과 확인
+
+---
+
+## 문서(워드·한글·엑셀·PPT) 제출
+
+고객이 문서를 올리면 서버가 **PDF 사본을 만들어 원본과 함께 보관**하고, 내용을 읽어 요구 항목에
+자동 배정한다. 관리자 화면에서는 PDF 를 인라인으로 보고 원본·PDF 를 각각 내려받을 수 있다.
+
+**설정**
+
+| 항목 | 위치 | 비고 |
+| --- | --- | --- |
+| 항목 유형(사진/문서/무관) | 관리자 → 요구 사진 관리 | '문서'면 고객 화면에 파일 선택기가 뜬다 |
+| 문서 분류 키워드 | 같은 화면 | 쉼표 구분. 문서 제목에 들어가는 말이 가장 정확하다 |
+| `SOFFICE_BIN` | `/etc/photo-submission.env` | 비우면 자동 탐지 |
+| `DOC_CONVERT_CONCURRENCY` | 같은 파일 | soffice 는 인스턴스당 200~400MB. 작은 EC2 에서는 **1 유지** |
+| `DOC_CONVERT_TIMEOUT_SEC` | 같은 파일 | 기본 90 |
+
+**로컬 개발**: `brew install --cask libreoffice` (없어도 앱은 뜬다 — 변환만 실패로 강등)
+
+**알려진 제약**
+- 스톡 LibreOffice 의 한글 필터는 `writer_MIZI_Hwp_97` 뿐이라 **한글 97(.hwp v3)만** 열린다.
+  요즘 쓰는 HWP 5.0 과 `.hwpx` 는 [H2Orestart](https://github.com/ebandal/H2Orestart) 확장을 깔아야 한다
+  (`sudo unopkg add --shared H2Orestart.oxt` 후 서비스 재시작). 확장 없이도 원본은 그대로 보관·다운로드된다.
+- 스캔 PDF(텍스트 레이어 없음)는 **파일명**으로만 분류한다. 판단이 서지 않으면 고객에게 직접 고르게 한다.
+- 원본 + PDF 를 함께 보관하므로 디스크 사용량이 약 2배다. `du -sh /opt/photo-submission/uploads` 로 확인.
 
 ---
 

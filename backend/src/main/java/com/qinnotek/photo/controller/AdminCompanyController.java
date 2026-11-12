@@ -51,7 +51,27 @@ public class AdminCompanyController {
         companyService.delete(id);
     }
 
-    @Operation(summary = "전화번호 등록/수정", description = "기업당 1개, 중복 불가")
+    @Operation(summary = "제출 링크 발급/재발급",
+            description = "기업당 1개. 재발급하면 이전 링크는 즉시 무효. validDays 가 없으면 기한 없음")
+    @PostMapping("/{id}/link")
+    public CompanyDetailResponse issueLink(@PathVariable Long id,
+                                           @RequestBody(required = false) CompanyRequests.IssueLink request) {
+        return companyService.issueLink(id, request == null ? null : request.validDays());
+    }
+
+    @Operation(summary = "제출 링크 끄기")
+    @DeleteMapping("/{id}/link")
+    public CompanyDetailResponse revokeLink(@PathVariable Long id) {
+        return companyService.revokeLink(id);
+    }
+
+    @Operation(summary = "제출 링크 문자 발송")
+    @PostMapping("/{id}/link/sms")
+    public void sendLinkSms(@PathVariable Long id, @Valid @RequestBody CompanyRequests.SendLink request) {
+        companyService.sendLinkSms(id, request.to(), request.url());
+    }
+
+    @Operation(summary = "전화번호 등록/수정", description = "링크 문자 발송 시 기본 수신 번호")
     @PutMapping("/{id}/phone")
     public CompanyDetailResponse updatePhone(@PathVariable Long id,
                                              @RequestBody CompanyRequests.UpdatePhone request) {

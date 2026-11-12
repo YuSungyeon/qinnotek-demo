@@ -36,10 +36,7 @@ const { reviewCompanies, bumped } = useReviewNotifications()
         </RouterLink>
       </nav>
 
-      <RouterLink to="/" class="nav-item customer-link">
-        <span class="nav-icon"><Icon name="arrowUpRight" :size="18" /></span>
-        <span>고객 화면</span>
-      </RouterLink>
+      <!-- 고객 화면은 기업 상세 > 제출 링크 > '고객 화면 열기'로 연다 (링크 없이는 열 수 없음) -->
     </aside>
 
     <main class="content">

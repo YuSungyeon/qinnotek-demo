@@ -28,9 +28,21 @@ async function load() {
   }
 }
 
+const FILE_TYPES = [
+  { value: 'PHOTO', label: '사진' },
+  { value: 'DOCUMENT', label: '문서' },
+  { value: 'ANY', label: '무관' }
+]
+
 function openCreate() {
   editing.value = null
-  form.value = { name: '', description: '', classificationHint: '' }
+  form.value = {
+    name: '',
+    description: '',
+    classificationHint: '',
+    fileType: 'PHOTO',
+    documentKeywords: ''
+  }
   file.value = null
   modalError.value = ''
   showModal.value = true
@@ -41,7 +53,9 @@ function openEdit(r) {
   form.value = {
     name: r.name,
     description: r.description || '',
-    classificationHint: r.classificationHint || ''
+    classificationHint: r.classificationHint || '',
+    fileType: r.fileType || 'PHOTO',
+    documentKeywords: r.documentKeywords || ''
   }
   file.value = null
   modalError.value = ''
@@ -69,6 +83,8 @@ async function save() {
       name: form.value.name.trim(),
       description: form.value.description.trim(),
       classificationHint: form.value.classificationHint.trim(),
+      fileType: form.value.fileType,
+      documentKeywords: form.value.documentKeywords.trim(),
       exampleImage: file.value
     }
     if (editing.value) {
@@ -117,10 +133,16 @@ onMounted(load)
       <div v-for="r in list" :key="r.id" class="req-card">
         <div class="thumb">
           <img v-if="r.exampleImageUrl" :src="fileUrl(r.exampleImageUrl)" alt="예시" />
+          <div v-else-if="r.fileType === 'DOCUMENT'" class="no-img">서류 항목</div>
           <div v-else class="no-img">예시 없음</div>
         </div>
         <div class="req-body">
-          <div class="req-name">{{ r.name }}</div>
+          <div class="req-name">
+            {{ r.name }}
+            <span class="type-badge" :class="(r.fileType || 'PHOTO').toLowerCase()">
+              {{ r.fileTypeLabel || '사진' }}
+            </span>
+          </div>
           <div class="req-desc muted">{{ r.description || '설명 없음' }}</div>
         </div>
         <div class="req-actions">
@@ -147,24 +169,59 @@ onMounted(load)
           placeholder="고객에게 보여줄 촬영 안내 문구"
         ></textarea>
 
-        <label class="label" style="margin-top: 14px">AI 분류 힌트 (영문)</label>
-        <input
-          v-model="form.classificationHint"
-          class="input"
-          placeholder="예: the exterior facade of a building"
-        />
+        <label class="label" style="margin-top: 14px">받는 파일 유형</label>
+        <div class="seg">
+          <button
+            v-for="t in FILE_TYPES"
+            :key="t.value"
+            type="button"
+            class="seg-btn"
+            :class="{ active: form.fileType === t.value }"
+            @click="form.fileType = t.value"
+          >
+            {{ t.label }}
+          </button>
+        </div>
         <p class="muted hint-help">
-          고객이 '사진 한번에 올리기'를 쓰면 이 힌트로 자동 분류합니다. 사진을 영어로 묘사해주세요.
+          '문서'로 두면 고객 화면에 카메라 대신 파일 선택기가 나오고, 워드·한글은 PDF 사본이 함께 저장됩니다.
         </p>
 
-        <label class="label" style="margin-top: 14px">
-          예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}
-        </label>
-        <div v-if="editing?.exampleImageUrl && !file" class="cur-example">
-          <img :src="fileUrl(editing.exampleImageUrl)" alt="현재 예시" />
-          <span class="muted" style="font-size: 13px">현재 등록된 예시</span>
-        </div>
-        <input ref="fileInput" type="file" accept="image/*" @change="onFile" />
+        <!-- 사진 분류 설정 -->
+        <template v-if="form.fileType !== 'DOCUMENT'">
+          <label class="label" style="margin-top: 14px">AI 분류 힌트 (영문)</label>
+          <input
+            v-model="form.classificationHint"
+            class="input"
+            placeholder="예: the exterior facade of a building"
+          />
+          <p class="muted hint-help">
+            고객이 '한번에 올리기'를 쓰면 이 힌트로 사진을 자동 분류합니다. 사진을 영어로 묘사해주세요.
+          </p>
+
+          <label class="label" style="margin-top: 14px">
+            예시 이미지 {{ editing ? '(변경 시에만 선택)' : '' }}
+          </label>
+          <div v-if="editing?.exampleImageUrl && !file" class="cur-example">
+            <img :src="fileUrl(editing.exampleImageUrl)" alt="현재 예시" />
+            <span class="muted" style="font-size: 13px">현재 등록된 예시</span>
+          </div>
+          <input ref="fileInput" type="file" accept="image/*" @change="onFile" />
+        </template>
+
+        <!-- 문서 분류 설정 -->
+        <template v-if="form.fileType !== 'PHOTO'">
+          <label class="label" style="margin-top: 14px">문서 분류 키워드</label>
+          <textarea
+            v-model="form.documentKeywords"
+            class="input"
+            rows="2"
+            placeholder="사업자등록증, 등록번호, 대표자, 개업연월일"
+          ></textarea>
+          <p class="muted hint-help">
+            서류에서 이 단어들이 보이면 이 항목으로 자동 분류합니다. 쉼표로 구분하세요.
+            (문서 제목에 들어가는 말을 넣으면 가장 정확합니다)
+          </p>
+        </template>
 
         <div v-if="modalError" class="alert alert-error" style="margin-top: 14px">{{ modalError }}</div>
 
@@ -295,5 +352,54 @@ onMounted(load)
   justify-content: flex-end;
   gap: 8px;
   margin-top: 18px;
+}
+
+/* 파일 유형 세그먼트 */
+.seg {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.seg-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  background: var(--card);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.seg-btn + .seg-btn {
+  border-left: 1px solid var(--border-strong);
+}
+.seg-btn.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+/* 목록 유형 배지 */
+.type-badge {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.type-badge.photo {
+  color: var(--primary-dark);
+  background: var(--primary-soft);
+}
+.type-badge.document {
+  color: #b45309;
+  background: #fffbeb;
+}
+.type-badge.any {
+  color: #475569;
+  background: #f1f5f9;
 }
 </style>

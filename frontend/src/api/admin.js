@@ -19,6 +19,16 @@ export const adminApi = {
   deleteCompany(id) {
     return client.delete(`/api/admin/companies/${id}`).then((r) => r.data)
   },
+  // 제출 링크 — validDays 가 null 이면 기한 없음
+  issueLink(id, validDays) {
+    return client.post(`/api/admin/companies/${id}/link`, { validDays }).then((r) => r.data)
+  },
+  revokeLink(id) {
+    return client.delete(`/api/admin/companies/${id}/link`).then((r) => r.data)
+  },
+  sendLinkSms(id, to, url) {
+    return client.post(`/api/admin/companies/${id}/link/sms`, { to, url }).then((r) => r.data)
+  },
   updatePhone(id, phoneNumber) {
     return client.put(`/api/admin/companies/${id}/phone`, { phoneNumber }).then((r) => r.data)
   },
@@ -51,11 +61,13 @@ export const adminApi = {
   listRequirements() {
     return client.get('/api/admin/requirements').then((r) => r.data)
   },
-  createRequirement({ name, description, classificationHint, exampleImage }) {
+  createRequirement({ name, description, classificationHint, fileType, documentKeywords, exampleImage }) {
     const form = new FormData()
     form.append('name', name)
     if (description) form.append('description', description)
     if (classificationHint) form.append('classificationHint', classificationHint)
+    if (fileType) form.append('fileType', fileType)
+    if (documentKeywords) form.append('documentKeywords', documentKeywords)
     if (exampleImage) form.append('exampleImage', exampleImage)
     return client
       .post('/api/admin/requirements', form, {
@@ -63,11 +75,13 @@ export const adminApi = {
       })
       .then((r) => r.data)
   },
-  updateRequirement(id, { name, description, classificationHint, exampleImage }) {
+  updateRequirement(id, { name, description, classificationHint, fileType, documentKeywords, exampleImage }) {
     const form = new FormData()
     form.append('name', name)
     if (description) form.append('description', description)
     if (classificationHint) form.append('classificationHint', classificationHint)
+    if (fileType) form.append('fileType', fileType)
+    if (documentKeywords) form.append('documentKeywords', documentKeywords)
     if (exampleImage) form.append('exampleImage', exampleImage)
     return client
       .put(`/api/admin/requirements/${id}`, form, {

@@ -31,9 +31,22 @@ const assignedManagerNames = computed(() =>
   managers.value.filter((m) => selectedManagerIds.value.includes(m.id)).map((m) => m.name)
 )
 
-// 전화번호 편집
-const phoneInput = ref('')
-const savingPhone = ref(false)
+// 제출 링크
+const LINK_EXPIRY = [
+  { days: 7, label: '7일' },
+  { days: 30, label: '30일' },
+  { days: null, label: '기한 없음' }
+]
+const linkDays = ref(30)
+const linkBusy = ref(false)
+const linkCopied = ref(false)
+const confirmReissue = ref(false)
+const smsOpen = ref(false)
+const smsTo = ref('')
+const smsSending = ref(false)
+const smsMsg = ref('')
+const link = computed(() => company.value?.link || null)
+const linkUrl = computed(() => (link.value ? `${window.location.origin}/s/${link.value.token}` : ''))
 
 // 요구사진 지정
 const selectedReqIds = ref([])
@@ -75,6 +88,11 @@ const approvedCount = computed(
 const zipUrl = computed(() =>
   fileUrl(`/api/admin/companies/${companyId.value}/submissions/approved-zip`)
 )
+// 워드/한글 원본 없이 PDF 사본만 받고 싶을 때
+const zipPdfUrl = computed(() => zipUrl.value + '?scope=pdf')
+const hasDocument = computed(() =>
+  (submission.value?.items || []).some((i) => i.contentKind === 'DOCUMENT')
+)
 
 async function loadAll() {
   loading.value = true
@@ -90,7 +108,7 @@ async function loadAll() {
     requirements.value = reqs
     managers.value = mgrs
     submission.value = subs
-    phoneInput.value = detail.phoneNumber || ''
+    smsTo.value = formatPhone(detail.phoneNumber || '')
     selectedReqIds.value = [...detail.assignedRequirementIds]
     selectedManagerIds.value = [...(detail.assignedManagerIds || [])]
   } catch (err) {
@@ -100,16 +118,73 @@ async function loadAll() {
   }
 }
 
-async function savePhone() {
-  savingPhone.value = true
+function formatPhone(v) {
+  const d = (v || '').replace(/\D/g, '').slice(0, 11)
+  if (d.length > 7) return `${d.slice(0, 3)}-${d.slice(3, d.length - 4)}-${d.slice(-4)}`
+  if (d.length > 3) return `${d.slice(0, 3)}-${d.slice(3)}`
+  return d
+}
+function fmtDate(v) {
+  if (!v) return ''
+  const d = new Date(v)
+  const p = (x) => String(x).padStart(2, '0')
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** 발급/재발급 - 재발급하면 이전 링크는 서버에서 즉시 무효 */
+async function issueLink() {
+  linkBusy.value = true
   error.value = ''
   try {
-    // 고객 조회는 숫자만 비교하므로 하이픈 등 기호 제거 후 저장
-    company.value = await adminApi.updatePhone(companyId.value, phoneInput.value.replace(/\D/g, ''))
+    company.value = await adminApi.issueLink(companyId.value, linkDays.value)
+    confirmReissue.value = false
+    smsMsg.value = ''
   } catch (err) {
     error.value = err.message
   } finally {
-    savingPhone.value = false
+    linkBusy.value = false
+  }
+}
+async function revokeLink() {
+  linkBusy.value = true
+  error.value = ''
+  try {
+    company.value = await adminApi.revokeLink(companyId.value)
+    smsOpen.value = false
+    smsMsg.value = ''
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    linkBusy.value = false
+  }
+}
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(linkUrl.value)
+  } catch {
+    // 클립보드 권한이 없는 환경 - 직접 선택해 복사하도록 안내
+    window.prompt('아래 링크를 복사하세요', linkUrl.value)
+    return
+  }
+  linkCopied.value = true
+  setTimeout(() => (linkCopied.value = false), 1600)
+}
+async function sendLinkSms() {
+  const digits = smsTo.value.replace(/\D/g, '')
+  if (digits.length < 10) {
+    smsMsg.value = '받는 번호를 확인해주세요.'
+    return
+  }
+  smsSending.value = true
+  smsMsg.value = ''
+  try {
+    await adminApi.sendLinkSms(companyId.value, digits, linkUrl.value)
+    smsMsg.value = `${formatPhone(digits)}로 보냈습니다.`
+    smsOpen.value = false
+  } catch (err) {
+    smsMsg.value = err.message
+  } finally {
+    smsSending.value = false
   }
 }
 
@@ -279,14 +354,71 @@ onMounted(loadAll)
     <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
 
     <div class="grid">
-      <!-- 전화번호 -->
+      <!-- 제출 링크 -->
       <section class="card">
-        <h2 class="ctitle">전화번호</h2>
-        <p class="muted small">기업당 1개만 등록 가능합니다.</p>
-        <div class="row">
-          <input v-model="phoneInput" class="input" placeholder="전화번호 입력" />
-          <button class="btn" :disabled="savingPhone" @click="savePhone">저장</button>
+        <div class="link-head">
+          <h2 class="ctitle">제출 링크</h2>
+          <span v-if="link" class="link-state" :class="{ off: link.expired }">
+            <span class="dot"></span>{{ link.expired ? '만료됨' : '사용 중' }}
+          </span>
         </div>
+
+        <template v-if="!link || confirmReissue">
+          <p v-if="confirmReissue" class="muted small">
+            새로 만들면 <b>지금 링크는 바로 쓸 수 없게 됩니다.</b> 고객에게 다시 보내야 해요.
+          </p>
+          <p v-else class="muted small">기업마다 링크는 1개만 유효합니다.</p>
+          <div class="seg">
+            <button
+              v-for="e in LINK_EXPIRY"
+              :key="e.label"
+              :class="{ on: linkDays === e.days }"
+              @click="linkDays = e.days"
+            >
+              {{ e.label }}
+            </button>
+          </div>
+          <div class="link-actions">
+            <button class="btn" :disabled="linkBusy" @click="issueLink">
+              {{ confirmReissue ? '새로 만들기' : '링크 만들기' }}
+            </button>
+            <button v-if="confirmReissue" class="btn btn-ghost" @click="confirmReissue = false">취소</button>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="link-url" :class="{ off: link.expired }">{{ linkUrl }}</div>
+          <div class="link-actions">
+            <button class="btn" :disabled="link.expired" @click="copyLink">
+              {{ linkCopied ? '복사됨' : '링크 복사' }}
+            </button>
+            <button class="btn btn-ghost" :disabled="link.expired" @click="smsOpen = !smsOpen">문자로 보내기</button>
+          </div>
+          <div v-if="smsOpen" class="row" style="margin-top: 8px">
+            <input
+              :value="smsTo"
+              class="input"
+              type="tel"
+              inputmode="numeric"
+              placeholder="받는 번호"
+              @input="smsTo = formatPhone($event.target.value)"
+              @keyup.enter="sendLinkSms"
+            />
+            <button class="btn" :disabled="smsSending" @click="sendLinkSms">보내기</button>
+          </div>
+          <p v-if="smsMsg" class="small link-msg">{{ smsMsg }}</p>
+
+          <dl class="link-meta">
+            <div><dt>만든 날</dt><dd>{{ fmtDate(link.issuedAt) }}</dd></div>
+            <div><dt>만료</dt><dd>{{ link.expiresAt ? fmtDate(link.expiresAt) : '기한 없음' }}</dd></div>
+            <div><dt>마지막 접속</dt><dd>{{ link.openedAt ? fmtDate(link.openedAt) : '아직 열지 않음' }}</dd></div>
+          </dl>
+          <div class="link-sub">
+            <button class="btn btn-ghost btn-sm" :disabled="linkBusy" @click="confirmReissue = true">재발급</button>
+            <button class="btn btn-ghost btn-sm" :disabled="linkBusy" @click="revokeLink">링크 끄기</button>
+            <a class="btn btn-ghost btn-sm" :href="linkUrl" target="_blank" rel="noopener">고객 화면 열기</a>
+          </div>
+        </template>
       </section>
 
       <!-- 요구사진 지정 -->
@@ -324,7 +456,15 @@ onMounted(loadAll)
         <h2 class="ctitle">제출 사진 검수</h2>
         <div class="sub-head-right">
           <a v-if="approvedCount > 0" class="btn btn-sm zip-btn" :href="zipUrl" download>
-            <Icon name="download" :size="16" /> 완료 사진 ZIP ({{ approvedCount }})
+            <Icon name="download" :size="16" /> 완료본 ZIP ({{ approvedCount }})
+          </a>
+          <a
+            v-if="approvedCount > 0 && hasDocument"
+            class="btn btn-ghost btn-sm zip-btn"
+            :href="zipPdfUrl"
+            download
+          >
+            PDF만 받기
           </a>
           <span v-if="submission?.latestSubmittedAt" class="muted small">
             최근 제출: {{ new Date(submission.latestSubmittedAt).toLocaleString('ko-KR') }}
@@ -343,9 +483,38 @@ onMounted(loadAll)
             <span class="badge" :style="{ background: statusColor(item.status) }">{{ statusOf(item.status) }}</span>
           </div>
 
-          <div class="photo-box" @click="item.photoUrl && (lightbox = fileUrl(item.photoUrl))">
+          <!-- 문서 제출본: PDF 사본을 인라인으로 보고, 원본/PDF 각각 내려받는다 -->
+          <template v-if="item.contentKind === 'DOCUMENT'">
+            <div class="doc-box">
+              <iframe
+                v-if="item.pdfUrl"
+                :src="fileUrl(item.pdfUrl) + '#toolbar=1&view=FitH'"
+                class="pdf-frame"
+                :title="item.displayName"
+              ></iframe>
+              <div v-else class="no-photo">
+                PDF 변환 실패 · 원본만 확인 가능
+              </div>
+            </div>
+            <div class="doc-links">
+              <a class="btn btn-ghost btn-sm" :href="fileUrl(item.originalDownloadUrl)" download>
+                <Icon name="download" :size="15" /> 원본
+              </a>
+              <a
+                v-if="item.pdfDownloadUrl"
+                class="btn btn-ghost btn-sm"
+                :href="fileUrl(item.pdfDownloadUrl)"
+                download
+              >
+                <Icon name="download" :size="15" /> PDF
+              </a>
+              <span class="doc-filename muted small">{{ item.originalFileName }}</span>
+            </div>
+          </template>
+
+          <div v-else class="photo-box" @click="item.photoUrl && (lightbox = fileUrl(item.photoUrl))">
             <img v-if="item.photoUrl" :src="fileUrl(item.photoUrl)" alt="제출 사진" />
-            <div v-else class="no-photo">사진 없음</div>
+            <div v-else class="no-photo">{{ item.fileType === 'DOCUMENT' ? '서류 없음' : '사진 없음' }}</div>
           </div>
 
           <div v-if="item.status === 'RETURNED' && item.rejectReason" class="reject-reason">
@@ -524,6 +693,109 @@ onMounted(loadAll)
 </template>
 
 <style scoped>
+/* 제출 링크 카드 */
+.link-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.link-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  white-space: nowrap;
+}
+.link-state .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.link-state.off {
+  background: #f1f5f9;
+  color: var(--text-muted);
+}
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-top: 12px;
+  background: #f1f3f5;
+  border-radius: var(--btn-radius);
+}
+.seg button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: var(--btn-radius);
+}
+.seg button.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+.link-url {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #f1f3f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  word-break: break-all;
+}
+.link-url.off {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.link-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.link-actions .btn {
+  flex: 1;
+}
+.link-msg {
+  margin: 8px 2px 0;
+}
+.link-meta {
+  margin: 14px 0 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.link-meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.link-meta dt {
+  color: var(--text-muted);
+}
+.link-meta dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.link-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
 .back {
   margin-bottom: 12px;
 }
@@ -745,6 +1017,34 @@ onMounted(loadAll)
   color: var(--text-muted);
   font-size: 14px;
   cursor: default;
+}
+/* 문서 제출본 - PDF 인라인 뷰어 (데스크톱 기준) */
+.doc-box {
+  width: 100%;
+  aspect-ratio: 1;
+  background: #f3f4f6;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+.doc-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.doc-filename {
+  flex: 1 1 100%;
+  word-break: break-all;
 }
 .reject-reason {
   margin-top: 8px;

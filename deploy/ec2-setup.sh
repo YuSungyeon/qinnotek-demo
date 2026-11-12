@@ -55,7 +55,8 @@ FLUSH PRIVILEGES;
 SQL
 
 echo "==> 3) 앱 디렉터리 및 업로드 폴더 생성"
-sudo mkdir -p "${APP_DIR}/uploads"
+# .tmp 는 문서 변환 작업 디렉터리 (업로드 루트와 같은 파일시스템이어야 이동이 빠르다)
+sudo mkdir -p "${APP_DIR}/uploads/.tmp"
 sudo chown -R ubuntu:ubuntu "${APP_DIR}"
 
 echo "==> 4) 환경변수 파일 생성 (${ENV_FILE})"
@@ -73,6 +74,11 @@ JAVA_TOOL_OPTIONS=-Xmx320m -Xss512k
 SMS_ENABLED=${SMS_ENABLED:-false}
 SOLAPI_API_KEY=${SOLAPI_API_KEY:-}
 SOLAPI_API_SECRET=${SOLAPI_API_SECRET:-}
+# 문서 → PDF 변환 (deploy/libreoffice-setup.sh 실행 필요)
+SOFFICE_BIN=/usr/bin/soffice
+DOC_CONVERT_TIMEOUT_SEC=90
+# soffice 인스턴스당 200~400MB 를 쓰므로 작은 인스턴스에서는 1을 유지한다
+DOC_CONVERT_CONCURRENCY=1
 ENV
 sudo chmod 600 "${ENV_FILE}"
 

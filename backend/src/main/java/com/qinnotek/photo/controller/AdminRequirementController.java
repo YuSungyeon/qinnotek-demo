@@ -24,23 +24,28 @@ public class AdminRequirementController {
         return requirementService.findAll();
     }
 
-    @Operation(summary = "요구 사진 등록", description = "사진 명칭(중복 불가), 설명, AI 분류 힌트(영문), 예시 이미지")
+    @Operation(summary = "요구 항목 등록",
+            description = "명칭(중복 불가), 설명, 파일 유형(PHOTO/DOCUMENT/ANY), 사진 분류 힌트(영문)와 예시 이미지, 문서 분류 키워드")
     @PostMapping(consumes = "multipart/form-data")
     public RequirementResponse create(@RequestParam String name,
                                       @RequestParam(required = false) String description,
                                       @RequestParam(required = false) String classificationHint,
+                                      @RequestParam(required = false) String fileType,
+                                      @RequestParam(required = false) String documentKeywords,
                                       @RequestParam(required = false) MultipartFile exampleImage) {
-        return requirementService.create(name, description, classificationHint, exampleImage);
+        return requirementService.create(name, description, classificationHint, fileType, documentKeywords, exampleImage);
     }
 
-    @Operation(summary = "요구 사진 수정")
+    @Operation(summary = "요구 항목 수정")
     @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     public RequirementResponse update(@PathVariable Long id,
                                       @RequestParam String name,
                                       @RequestParam(required = false) String description,
                                       @RequestParam(required = false) String classificationHint,
+                                      @RequestParam(required = false) String fileType,
+                                      @RequestParam(required = false) String documentKeywords,
                                       @RequestParam(required = false) MultipartFile exampleImage) {
-        return requirementService.update(id, name, description, classificationHint, exampleImage);
+        return requirementService.update(id, name, description, classificationHint, fileType, documentKeywords, exampleImage);
     }
 
     @Operation(summary = "요구 사진 삭제", description = "기업에 지정되지 않은 경우에만 삭제 가능")

@@ -70,6 +70,10 @@ jobs:
             upsert SOLAPI_API_SECRET "$SOLAPI_API_SECRET"
             upsert SOLAPI_SENDER "$SOLAPI_SENDER"
 
+            # 문서 → PDF 변환기 확인 (설치는 배포를 막지 않도록 자동으로 하지 않는다)
+            command -v soffice >/dev/null \
+              || echo "경고: LibreOffice 미설치 - 문서는 원본만 저장됩니다. deploy/libreoffice-setup.sh 를 실행하세요."
+
             sudo systemctl restart photo-submission
             sleep 5
             sudo systemctl is-active photo-submission

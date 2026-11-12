@@ -10,12 +10,16 @@ public record RequirementResponse(
         String name,
         String description,
         String classificationHint,
-        String exampleImageUrl
+        String exampleImageUrl,
+        String fileType,
+        String fileTypeLabel,
+        String documentKeywords
 ) {
     public static RequirementResponse from(PhotoRequirement req) {
         String url = req.getExampleImageFileName() != null
                 ? "/api/files/" + req.getExampleImageFileName() : null;
         return new RequirementResponse(
-                req.getId(), req.getName(), req.getDescription(), req.getClassificationHint(), url);
+                req.getId(), req.getName(), req.getDescription(), req.getClassificationHint(), url,
+                req.getFileType().name(), req.getFileType().getLabel(), req.getDocumentKeywords());
     }
 }

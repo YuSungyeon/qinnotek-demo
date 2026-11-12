@@ -8,8 +8,9 @@ spring:
     name: photo-submission
   servlet:
     multipart:
-      max-file-size: 20MB
-      max-request-size: 20MB
+      # 문서(스캔 PDF 등)는 이미지보다 큰 경우가 있어 여유를 둔다. 항목별 검사는 app.upload.max-*-bytes
+      max-file-size: 30MB
+      max-request-size: 32MB
   # 기본 프로필: 로컬/데모용 H2 인메모리 DB (설정 없이 바로 실행 가능)
   datasource:
     url: jdbc:h2:mem:photodb;DB_CLOSE_DELAY=-1;MODE=MySQL
@@ -31,6 +32,17 @@ spring:
 app:
   upload:
     dir: ./uploads
+    max-image-bytes: 20MB
+    max-document-bytes: 30MB
+  document:
+    # 비어있으면 SOFFICE_BIN 환경변수 → 관례적 경로 순으로 자동 탐지
+    soffice-bin: ${SOFFICE_BIN:}
+    convert-timeout-sec: ${DOC_CONVERT_TIMEOUT_SEC:90}
+    convert-concurrency: ${DOC_CONVERT_CONCURRENCY:1}
+    # 문서 자동 분류 임계값 (운영 중 조정 가능)
+    abstain-score: 0.8
+    low-score: 2.0
+    low-margin: 0.8
   cors:
     allowed-origins: "http://localhost:5173,http://localhost:4173"
   sms:

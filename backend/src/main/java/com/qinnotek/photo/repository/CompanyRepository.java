@@ -10,6 +10,8 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
     Optional<Company> findByPhoneNumber(String phoneNumber);
 
+    Optional<Company> findByAccessToken(String accessToken);
+
     boolean existsByName(String name);
 
     boolean existsByPhoneNumber(String phoneNumber);

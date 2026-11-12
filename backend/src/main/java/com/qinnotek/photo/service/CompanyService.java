@@ -14,15 +14,17 @@ import com.qinnotek.photo.repository.CompanyRepository;
 import com.qinnotek.photo.repository.ManagerRepository;
 import com.qinnotek.photo.repository.PhotoRequirementRepository;
 import com.qinnotek.photo.repository.SubmissionItemRepository;
+import com.qinnotek.photo.util.LinkTokens;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 관리자 기업 관리 - 검색, 전화번호 등록/수정, 요구 사진 지정.
+ * 관리자 기업 관리 - 검색, 제출 링크 발급, 요구 사진 지정.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class CompanyService {
     private final ManagerRepository managerRepository;
     private final CompanyManagerRepository companyManagerRepository;
     private final FileStorageService fileStorageService;
+    private final SmsService smsService;
 
     public List<CompanySummaryResponse> search(String keyword) {
         List<Company> companies;
@@ -123,6 +126,46 @@ public class CompanyService {
             }
         }
         return getDetail(id);
+    }
+
+    /** 제출 링크 발급/재발급. 재발급하면 이전 링크는 즉시 무효가 된다. */
+    @Transactional
+    public CompanyDetailResponse issueLink(Long id, Integer validDays) {
+        Company company = getOrThrow(id);
+        if (validDays != null && (validDays < 1 || validDays > 365)) {
+            throw BusinessException.badRequest("유효 기간은 1~365일이어야 합니다.");
+        }
+        String token;
+        do {
+            token = LinkTokens.generate();
+        } while (companyRepository.findByAccessToken(token).isPresent());
+        LocalDateTime expiresAt = validDays == null ? null : LocalDateTime.now().plusDays(validDays);
+        company.issueLink(token, expiresAt);
+        return getDetail(id);
+    }
+
+    /** 제출 링크 끄기 */
+    @Transactional
+    public CompanyDetailResponse revokeLink(Long id) {
+        getOrThrow(id).revokeLink();
+        return getDetail(id);
+    }
+
+    /** 제출 링크를 문자로 보낸다. url 은 반드시 현재 토큰으로 끝나야 한다. */
+    public void sendLinkSms(Long id, String to, String url) {
+        Company company = getOrThrow(id);
+        String token = company.getAccessToken();
+        if (token == null || company.isLinkExpired(LocalDateTime.now())) {
+            throw BusinessException.badRequest("사용 중인 링크가 없습니다. 링크를 먼저 만들어주세요.");
+        }
+        if (url == null || !url.endsWith("/s/" + token)) {
+            throw BusinessException.badRequest("현재 링크와 다릅니다. 화면을 새로고침해주세요.");
+        }
+        String digits = to == null ? "" : to.replaceAll("\\D", "");
+        if (digits.length() < 10 || digits.length() > 11) {
+            throw BusinessException.badRequest("받는 번호를 확인해주세요.");
+        }
+        smsService.sendLink(digits, company.getName(), url);
     }
 
     @Transactional
