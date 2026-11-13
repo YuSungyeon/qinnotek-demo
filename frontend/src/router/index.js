@@ -13,57 +13,6 @@ const routes = [
   { path: '/', name: 'customer-home', component: CustomerView },
   { path: '/s/:token', name: 'customer', component: CustomerView, props: true },
   {
-    path: '/example',
-    name: 'example',
-    component: () => import('../views/example/MesFlowView.vue')
-  },
-  {
-    path: '/example2',
-    name: 'example2',
-    component: () => import('../views/example/MesFlowView2.vue')
-  },
-  {
-    path: '/example3',
-    name: 'example3',
-    component: () => import('../views/example/MesFlowView3.vue')
-  },
-  {
-    path: '/example4',
-    name: 'example4',
-    component: () => import('../views/example/LoginChange.vue')
-  },
-  {
-    path: '/example5',
-    name: 'example5',
-    component: () => import('../views/example/LoginSaas.vue')
-  },
-  {
-    path: '/example6',
-    name: 'example6',
-    component: () => import('../views/example/LoginManaged.vue')
-  },
-  {
-    path: '/example7',
-    name: 'example7',
-    component: () => import('../views/example/LoginStory.vue')
-  },
-  {
-    path: '/example8',
-    name: 'example8',
-    component: () => import('../views/example/LoginStoryIcon.vue')
-  },
-  {
-    path: '/example9',
-    name: 'example9',
-    component: () => import('../views/example/LinkAccess.vue')
-  },
-  {
-    // 시안: 관리자 화면 design.md 스타일 (실제 /admin 은 그대로)
-    path: '/example10',
-    name: 'example10',
-    component: () => import('../views/example/AdminRedesign.vue')
-  },
-  {
     path: '/admin',
     component: AdminLayout,
     children: [
@@ -74,7 +23,9 @@ const routes = [
       { path: 'managers', name: 'admin-managers', component: AdminManagers },
       { path: 'settings', name: 'admin-settings', component: AdminSettings }
     ]
-  }
+  },
+  // 그 밖의 주소(예전 시안 주소 등)는 빈 화면 대신 고객 첫 화면("링크를 확인해주세요")으로
+  { path: '/:pathMatch(.*)*', redirect: '/' }
 ]
 
 export default createRouter({
