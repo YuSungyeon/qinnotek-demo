@@ -58,6 +58,12 @@ const routes = [
     component: () => import('../views/example/LinkAccess.vue')
   },
   {
+    // 시안: 관리자 화면 design.md 스타일 (실제 /admin 은 그대로)
+    path: '/example10',
+    name: 'example10',
+    component: () => import('../views/example/AdminRedesign.vue')
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     children: [
