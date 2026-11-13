@@ -27,14 +27,6 @@ public class AdminSettingService {
     }
 
     @Transactional
-    public AdminSettingDto.Response updateTheme(String designId, String themeId, String primaryColor) {
-        AdminSetting setting = repository.findTopByOrderByIdAsc().orElseGet(AdminSetting::new);
-        setting.changeTheme(designId, themeId, primaryColor);
-        repository.save(setting);
-        return toResponse(setting);
-    }
-
-    @Transactional
     public AdminSettingDto.Response updateSmsEnabled(boolean enabled) {
         AdminSetting setting = repository.findTopByOrderByIdAsc().orElseGet(AdminSetting::new);
         setting.changeSmsEnabled(enabled);
@@ -54,22 +46,7 @@ public class AdminSettingService {
                 && sms.getApiSecret() != null && !sms.getApiSecret().isBlank();
     }
 
-    /** 공개 테마 조회 (설정 없으면 기본값) */
-    public AdminSettingDto.Theme getTheme() {
-        return repository.findTopByOrderByIdAsc()
-                .map(s -> new AdminSettingDto.Theme(
-                        s.getDesignId() == null ? "base" : s.getDesignId(),
-                        s.getThemeId() == null ? "blue" : s.getThemeId(),
-                        s.getPrimaryColor()))
-                .orElse(new AdminSettingDto.Theme("base", "blue", null));
-    }
-
     private AdminSettingDto.Response toResponse(AdminSetting setting) {
-        return new AdminSettingDto.Response(
-                setting.isSmsEnabled(),
-                isSmsKeyReady(),
-                setting.getDesignId() == null ? "base" : setting.getDesignId(),
-                setting.getThemeId() == null ? "blue" : setting.getThemeId(),
-                setting.getPrimaryColor());
+        return new AdminSettingDto.Response(setting.isSmsEnabled(), isSmsKeyReady());
     }
 }

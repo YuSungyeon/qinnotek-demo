@@ -1,21 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+// 전역 디자인 토큰·공통 컴포넌트 (design.md 모노크롬). 화면 색은 이 파일에서만 바꾼다.
 import './style.css'
-import { applyTheme, loadThemeLocal, saveThemeLocal } from './theme'
-import { themeApi } from './api/theme'
-
-// 1) 로컬 캐시 테마 즉시 적용(깜빡임 방지)
-const cached = loadThemeLocal()
-if (cached) applyTheme(cached)
 
 createApp(App).use(router).mount('#app')
-
-// 2) 서버 테마로 동기화 (관리자가 바꾼 최신값)
-themeApi
-  .get()
-  .then((cfg) => {
-    applyTheme(cfg)
-    saveThemeLocal(cfg)
-  })
-  .catch(() => {})

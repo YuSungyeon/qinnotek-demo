@@ -12,7 +12,6 @@ public record CompanySubmissionResponse(
         String phoneNumber,
         String status,
         String statusLabel,
-        String statusColor,
         LocalDateTime latestSubmittedAt,
         List<SubmissionItemResponse> items
 ) {

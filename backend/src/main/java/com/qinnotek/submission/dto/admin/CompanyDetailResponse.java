@@ -15,7 +15,6 @@ public record CompanyDetailResponse(
         String phoneNumber,
         String status,
         String statusLabel,
-        String statusColor,
         List<Long> assignedRequirementIds,
         List<Long> assignedManagerIds,
         Link link
@@ -34,7 +33,6 @@ public record CompanyDetailResponse(
                 company.getPhoneNumber(),
                 status.name(),
                 status.getLabel(),
-                status.getColor(),
                 assignedRequirementIds,
                 assignedManagerIds,
                 company.getAccessToken() == null ? null : new Link(

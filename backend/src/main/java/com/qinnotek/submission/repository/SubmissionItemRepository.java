@@ -24,6 +24,10 @@ public interface SubmissionItemRepository extends JpaRepository<SubmissionItem, 
     // --- 알림 배지용 경량 카운트 ---
     long countByStatus(SubmissionStatus status);
 
+    /** 요청 자료별로 지정된 기업 수 - [requirementId, count] 목록 (요청 자료 관리 화면의 "기업 N곳에 지정") */
+    @Query("select i.requirement.id, count(i) from SubmissionItem i group by i.requirement.id")
+    List<Object[]> countGroupByRequirement();
+
     @Query("select count(distinct i.company.id) from SubmissionItem i where i.status = :status")
     long countDistinctCompaniesByStatus(@Param("status") SubmissionStatus status);
 

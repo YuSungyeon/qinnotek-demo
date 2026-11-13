@@ -680,69 +680,12 @@ async function submit() {
 </template>
 
 <style scoped>
-/* ---- design.md 토큰: 모노크롬 · 스타디움 필 · 그림자 없는 틴트 계단 ----
-   관리자 테마 설정과 무관하게 고객 화면은 이 토큰을 쓴다.
-   공통 컴포넌트(.btn/.card/.input/.alert, SubmissionItemCard)도 변수를 상속받아 같이 바뀐다. */
+/* 색·모양 토큰과 공통 컴포넌트(.btn/.card/.input/.alert/.chip)는 전역 style.css (design.md 모노크롬).
+   여기는 고객 화면에만 쓰는 배치와 큰 글씨만 정한다. */
 .page {
-  --ink: #141414;
-  --ink-soft: #262626;
-  --canvas: #ffffff;
-  --canvas-soft: #f3f3f3;
-  --field: #f0f0f0;
-  --hairline-soft: #f0f0f0;
-  --hairline: #e0e0e0;
-  --faint: #adadad;
-
-  --primary: var(--ink);
-  --primary-dark: var(--ink-soft);
-  --primary-soft: var(--canvas-soft);
-  --success: var(--ink);
-  --danger: var(--ink);
-  --danger-bg: var(--canvas-soft);
-  --text: var(--ink);
-  --text-muted: #707070;
-  --border: var(--hairline-soft);
-  --border-strong: var(--hairline);
-  --bg: var(--canvas);
-  --card: var(--canvas);
-  --radius: 24px;
-  --radius-sm: 16px;
-  --btn-radius: 9999px;
-  --shadow-sm: none;
-  --shadow-md: none;
-  --ring: 0 0 0 2px var(--ink);
-  --font: 'Pretendard Variable', Pretendard, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: var(--font);
-  font-weight: 456;
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-.page :deep(*) {
-  letter-spacing: 0;
-}
-.page :deep(.btn) {
-  font-weight: 600;
-  box-shadow: none;
-}
-.page :deep(.btn-ghost) {
-  background: var(--canvas);
-  border-color: var(--hairline);
-}
-.page :deep(.btn-ghost:hover) {
-  background: var(--canvas-soft);
-}
-.page :deep(.alert) {
-  border: 0;
-  border-radius: 16px;
-  background: var(--canvas-soft);
-  color: var(--ink);
-  font-weight: 600;
 }
 
 /* 앱바 */

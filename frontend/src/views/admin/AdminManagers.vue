@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
+import { Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { adminApi } from '../../api/admin'
+import { phone } from '../../lib/format'
 
 const list = ref([])
 const loading = ref(true)
@@ -72,8 +74,7 @@ async function remove(m) {
   }
 }
 
-const fmtPhone = (p) =>
-  p && p.length === 11 ? `${p.slice(0, 3)}-${p.slice(3, 7)}-${p.slice(7)}` : p
+const fmtPhone = phone
 
 onMounted(load)
 </script>
@@ -82,60 +83,67 @@ onMounted(load)
   <div>
     <div class="page-head">
       <div>
-        <h1>담당자 관리</h1>
-        <p class="page-sub muted">제출 알림 문자를 받을 담당자를 등록합니다. 기업별 지정은 기업 상세에서 합니다.</p>
+        <h1>담당자</h1>
+        <p class="page-sub">제출 알림 문자를 받을 사람입니다. 기업별 지정은 기업 상세에서 합니다.</p>
       </div>
-      <button class="btn" @click="openCreate">+ 담당자 등록</button>
+      <button class="btn" @click="openCreate"><Plus :size="17" /> 담당자 등록</button>
     </div>
 
-    <div v-if="error" class="alert alert-error" style="margin-bottom: 16px">{{ error }}</div>
+    <div v-if="error" class="alert" style="margin-bottom: 16px">{{ error }}</div>
     <div v-if="loading" class="muted">불러오는 중…</div>
 
-    <table v-else class="tbl">
-      <thead>
-        <tr><th>이름</th><th>직책</th><th>전화번호</th><th>지정된 기업</th><th></th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="m in list" :key="m.id">
-          <td class="strong">{{ m.name }}</td>
-          <td>{{ m.position || '—' }}</td>
-          <td>{{ fmtPhone(m.phoneNumber) }}</td>
-          <td>
-            <div v-if="m.companies && m.companies.length" class="chips">
-              <span v-for="c in m.companies" :key="c" class="chip">{{ c }}</span>
-            </div>
-            <span v-else class="muted">지정된 기업 없음</span>
-          </td>
-          <td class="right">
-            <button class="btn btn-ghost btn-sm" @click="openEdit(m)">수정</button>
-            <button class="btn btn-danger btn-sm" @click="remove(m)">삭제</button>
-          </td>
-        </tr>
-        <tr v-if="list.length === 0">
-          <td colspan="5" class="muted center">등록된 담당자가 없습니다.</td>
-        </tr>
-      </tbody>
-    </table>
+    <section v-else class="list">
+      <div class="list-head"><span>이름</span><span>전화번호</span><span>지정된 기업</span><span></span></div>
+      <div v-for="m in list" :key="m.id" class="row-item">
+        <span class="name">
+          <span class="avatar">{{ m.name.slice(0, 1) }}</span>
+          <span>
+            <b>{{ m.name }}</b>
+            <small>{{ m.position || '직책 없음' }}</small>
+          </span>
+        </span>
+        <span class="tel">{{ fmtPhone(m.phoneNumber) }}</span>
+        <span class="tags">
+          <span v-for="c in m.companies || []" :key="c" class="tag">{{ c }}</span>
+          <small v-if="!m.companies || !m.companies.length" class="faint">지정된 기업 없음</small>
+        </span>
+        <span class="tools">
+          <button class="btn btn-soft btn-xs" @click="openEdit(m)"><Pencil :size="13" /> 수정</button>
+          <button class="icon-btn" :aria-label="`${m.name} 삭제`" title="삭제" @click="remove(m)">
+            <Trash2 :size="15" />
+          </button>
+        </span>
+      </div>
+      <p v-if="list.length === 0" class="empty">등록된 담당자가 없습니다.</p>
+    </section>
 
-    <!-- 등록/수정 모달 -->
+    <!-- 등록/수정 -->
     <div v-if="showModal" class="modal-mask" @click.self="showModal = false">
       <div class="modal">
         <h3>{{ editing ? '담당자 수정' : '담당자 등록' }}</h3>
 
-        <label class="label">이름 *</label>
-        <input v-model="form.name" class="input" placeholder="예: 김점장" />
+        <label class="label" for="mgr-name">이름 *</label>
+        <input id="mgr-name" v-model="form.name" class="input" placeholder="예: 김현우" />
 
-        <label class="label" style="margin-top: 14px">직책</label>
-        <input v-model="form.position" class="input" placeholder="예: 점장" />
+        <label class="label" for="mgr-position">직책</label>
+        <input id="mgr-position" v-model="form.position" class="input" placeholder="예: 구매팀장" />
 
-        <label class="label" style="margin-top: 14px">전화번호 *</label>
-        <input v-model="form.phoneNumber" class="input" placeholder="예: 01012345678" @keyup.enter="save" />
+        <label class="label" for="mgr-phone">전화번호 *</label>
+        <input
+          id="mgr-phone"
+          v-model="form.phoneNumber"
+          class="input"
+          type="tel"
+          inputmode="numeric"
+          placeholder="예: 01012345678"
+          @keyup.enter="save"
+        />
 
-        <div v-if="modalError" class="alert alert-error" style="margin-top: 14px">{{ modalError }}</div>
+        <div v-if="modalError" class="alert" style="margin-top: 14px">{{ modalError }}</div>
 
         <div class="modal-actions">
-          <button class="btn btn-ghost" @click="showModal = false">취소</button>
-          <button class="btn" :disabled="saving" @click="save">{{ editing ? '수정 저장' : '등록' }}</button>
+          <button class="btn btn-soft" @click="showModal = false">취소</button>
+          <button class="btn" :disabled="saving" @click="save">{{ editing ? '저장' : '등록' }}</button>
         </div>
       </div>
     </div>
@@ -143,102 +151,138 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-.page-head h1 {
-  font-size: 25px;
-  font-weight: 800;
-}
-.page-sub {
-  margin: 4px 0 0;
-  font-size: 14px;
-}
-.tbl {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  background: var(--card);
-  border-radius: var(--radius);
+.list {
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
   overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
 }
-.tbl th,
-.tbl td {
-  text-align: left;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
+.list-head,
+.row-item {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr 2fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
 }
-.tbl th {
-  background: #f8fafc;
+.list-head {
+  min-height: 44px;
+  background: var(--canvas-soft);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  font-weight: 600;
+  color: var(--muted);
 }
-.tbl tbody tr:last-child td {
-  border-bottom: none;
+.row-item {
+  min-height: 76px;
+  border-top: 1px solid var(--canvas-soft);
 }
-.strong {
-  font-weight: 700;
+.list-head + .row-item {
+  border-top: 0;
 }
-.center {
-  text-align: center;
+.name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
-.right {
-  text-align: right;
-  white-space: nowrap;
+.name > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.right .btn {
-  margin-left: 8px;
+.name b {
+  font-size: 16px;
+  font-weight: var(--w-heading);
 }
-.chips {
+.name small {
+  font-size: 13px;
+  color: var(--muted);
+}
+/* 사람은 동그라미 (design.md: 아바타는 원, 앱·기업은 둥근 사각) */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--canvas-soft);
+  font-weight: var(--w-heading);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.tel {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
-.chip {
+.tag {
+  padding: 6px 10px;
+  border-radius: var(--r-full);
+  background: var(--canvas-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tags small {
+  font-size: 13px;
+}
+.tools {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--primary-dark);
-  background: var(--primary-soft);
+  gap: 2px;
 }
-.modal-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
+.btn-xs {
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  z-index: 50;
 }
-.modal {
-  background: #fff;
-  border-radius: var(--radius);
-  padding: 22px;
-  width: 100%;
-  max-width: 420px;
+.icon-btn:hover {
+  background: var(--canvas-soft);
+  color: var(--ink);
 }
-.modal h3 {
-  font-size: 18px;
-  margin-bottom: 16px;
+.empty {
+  margin: 0;
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
 }
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 18px;
+.modal .label {
+  margin-top: 16px;
+}
+.modal h3 + .label {
+  margin-top: 12px;
+}
+
+@media (max-width: 840px) {
+  .list-head {
+    display: none;
+  }
+  .row-item {
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+    padding: 16px 20px;
+  }
+  .tel,
+  .tags {
+    grid-column: 1 / -1;
+  }
+  /* 수정·삭제는 이름 오른쪽 첫 줄에 */
+  .tools {
+    grid-row: 1;
+    grid-column: 2;
+  }
 }
 </style>

@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 요청 자료(마스터) 관리.
@@ -26,8 +28,11 @@ public class RequirementService {
     private final FileStorageService fileStorageService;
 
     public List<RequirementResponse> findAll() {
+        // 지정 기업 수를 한 번의 집계 쿼리로 가져온다 (항목마다 세면 요청 자료 수만큼 쿼리가 나간다)
+        Map<Long, Long> assigned = submissionItemRepository.countGroupByRequirement().stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
         return requirementRepository.findAllByOrderByNameAsc().stream()
-                .map(RequirementResponse::from)
+                .map(r -> RequirementResponse.from(r, assigned.getOrDefault(r.getId(), 0L)))
                 .toList();
     }
 

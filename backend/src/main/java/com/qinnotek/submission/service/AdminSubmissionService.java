@@ -46,7 +46,7 @@ public class AdminSubmissionService {
         CompanyStatus status = CompanyStatus.from(items);
         return new CompanySubmissionResponse(
                 company.getId(), company.getName(), company.getPhoneNumber(),
-                status.name(), status.getLabel(), status.getColor(),
+                status.name(), status.getLabel(),
                 latest, itemResponses);
     }
 

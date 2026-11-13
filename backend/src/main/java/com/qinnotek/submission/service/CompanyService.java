@@ -48,7 +48,7 @@ public class CompanyService {
                     .findByNameContainingOrPhoneNumberContainingOrderByNameAsc(keyword.trim(), keyword.trim());
         }
         return companies.stream()
-                .map(c -> CompanySummaryResponse.of(c, computeStatus(c.getId())))
+                .map(c -> CompanySummaryResponse.of(c, submissionItemRepository.findByCompanyId(c.getId())))
                 .toList();
     }
 
