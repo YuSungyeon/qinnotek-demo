@@ -118,3 +118,11 @@ app:
     dir: ${UPLOAD_DIR:/var/app/uploads}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:https://qinnotek.minisub.store}
+
+# 관리자 API 에 로그인이 붙기 전까지 운영에서는 API 명세(Swagger)를 공개하지 않는다.
+# 로컬(기본 프로필)에서는 http://localhost:8080/swagger-ui.html 그대로 쓴다.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

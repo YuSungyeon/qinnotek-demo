@@ -97,10 +97,12 @@ bash deploy/libreoffice-setup.sh
 
 확인:
 ```bash
-curl https://api.qinnotek.minisub.store/v3/api-docs
-# 브라우저: https://api.qinnotek.minisub.store/swagger-ui.html
+curl https://api.qinnotek.minisub.store/actuator/health   # {"status":"UP"}
 ```
 
+> 운영(prod)에서는 Swagger(`/swagger-ui.html`, `/v3/api-docs`)를 꺼 두었다. 관리자 로그인이 붙기 전까지
+> API 구조를 외부에 보여주지 않기 위해서다. API 명세는 로컬 실행(`http://localhost:8080/swagger-ui.html`)에서 본다.
+>
 > 프론트 도메인이 `https://qinnotek.minisub.store` 가 아니면 `/etc/photo-submission.env` 에 `PUBLIC_URL` 을 넣는다.
 > 관리자가 문자로 보내는 제출 링크 주소를 이 값으로 만든다.
 
@@ -123,7 +125,7 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 - [ ] 보안그룹 22 / 80 / 443
 - [ ] `deploy/ec2-setup.sh` 실행 (DB_PASSWORD 보관)
 - [ ] DNS 전파 확인 후 `deploy/nginx-setup.sh` 실행 (HTTPS 발급)
-- [ ] main push / Run workflow → `https://api.qinnotek.minisub.store/swagger-ui.html` 확인
+- [ ] main push / Run workflow → `https://api.qinnotek.minisub.store/actuator/health` 가 `UP` 인지 확인
 - [ ] Vercel 연결 + `VITE_API_BASE` + 커스텀 도메인 `qinnotek.minisub.store`
 - [ ] `deploy/libreoffice-setup.sh` 실행 (문서 PDF 변환) — `soffice --version` 과 한글 스모크 테스트 통과 확인
 

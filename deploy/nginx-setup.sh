@@ -47,7 +47,7 @@ echo "==> 3) HTTPS 인증서 발급 (Let's Encrypt)"
 if [ -n "${LE_EMAIL}" ]; then
   sudo certbot --nginx -d "${API_DOMAIN}" --non-interactive --agree-tos -m "${LE_EMAIL}" --redirect
   echo ""
-  echo "완료! https://${API_DOMAIN}/swagger-ui.html 로 확인하세요."
+  echo "완료! https://${API_DOMAIN}/actuator/health 로 확인하세요. (백엔드 배포 후 {\"status\":\"UP\"})"
 else
   echo ""
   echo "LE_EMAIL 미설정 → 아래를 수동 실행하세요:"
