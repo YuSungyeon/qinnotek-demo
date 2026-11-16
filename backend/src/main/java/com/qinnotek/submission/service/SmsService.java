@@ -27,7 +27,8 @@ public class SmsService {
     private final AdminSettingService adminSettingService;
     private final CompanyManagerRepository companyManagerRepository;
 
-    public void notifyManagersOnSubmission(Long companyId, String companyName) {
+    /** @param count 이번에 낸 항목 수 (일부만 먼저 낼 수 있어 매번 다르다) */
+    public void notifyManagersOnSubmission(Long companyId, String companyName, int count) {
         var sms = appProperties.getSms();
 
         if (!adminSettingService.isSmsEnabled()) {
@@ -51,7 +52,7 @@ public class SmsService {
 
         // 발신번호: SOLAPI_SENDER 설정이 있으면 사용, 없으면 첫 담당자 번호
         String from = isBlank(sms.getSenderNumber()) ? recipients.get(0) : sms.getSenderNumber();
-        String text = companyName + "에서 자료를 제출했습니다. 검토 바랍니다."; // SMS 한글 45자 이내
+        String text = companyName + "에서 자료 " + count + "건을 제출했습니다. 검토 바랍니다."; // SMS 한글 45자 이내
 
         DefaultMessageService messageService =
                 SolapiClient.INSTANCE.createInstance(sms.getApiKey(), sms.getApiSecret());

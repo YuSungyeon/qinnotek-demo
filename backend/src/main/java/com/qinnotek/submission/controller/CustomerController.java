@@ -4,6 +4,7 @@ import com.qinnotek.submission.dto.customer.AttachDocumentRequest;
 import com.qinnotek.submission.dto.customer.CustomerItemResponse;
 import com.qinnotek.submission.dto.customer.CustomerStatusResponse;
 import com.qinnotek.submission.dto.customer.StagedDocumentResponse;
+import com.qinnotek.submission.dto.customer.SubmitRequest;
 import com.qinnotek.submission.service.CustomerService;
 import com.qinnotek.submission.service.StagedDocumentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,10 +44,13 @@ public class CustomerController {
         return customerService.uploadPhoto(token, itemId, file);
     }
 
-    @Operation(summary = "최종 제출", description = "모든 대상 항목 업로드 완료 시 검수 대기 상태로 전환하고 관리자에게 알림 발송")
+    @Operation(summary = "제출",
+            description = "고른 항목(itemIds)만 검수 대기로 넘기고 담당자에게 알림을 보낸다. 일부만 먼저 낼 수 있고, "
+                    + "남은 항목은 같은 링크로 이어서 낸다. 본문이 없으면 파일을 올려 둔 항목을 모두 낸다.")
     @PostMapping("/submit")
-    public CustomerStatusResponse submit(@PathVariable String token) {
-        return customerService.submit(token);
+    public CustomerStatusResponse submit(@PathVariable String token,
+                                         @RequestBody(required = false) SubmitRequest request) {
+        return customerService.submit(token, request == null ? null : request.itemIds());
     }
 
     @Operation(summary = "문서 올리기",

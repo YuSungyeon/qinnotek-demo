@@ -94,7 +94,9 @@ npm run dev
 주요 규칙:
 - 항목당 파일 1개, 항상 최신 제출본만 유지(UUID 저장, 원본/경로/일시 DB 기록)
 - 반환 시 반환 사유 필수, 기존 파일 삭제, 고객은 반환 항목만 재제출
-- 제출 완료 시 관리자에게 알림 문자 발송(`SmsService` — Solapi, 관리자 설정에서 켜고 끔)
+- 부분 제출: 일부만 채우고 전송하면 먼저 보낼지 묻고(기본은 빈 항목 채우기), 채운 항목만 검수 대기로 넘긴다.
+  낼 항목(미제출·반환)이 남아 있으면 검수 중이어도 고객 화면을 잠그지 않는다
+- 제출할 때마다 관리자에게 알림 문자 발송 — 이번에 낸 건수 포함(`SmsService` — Solapi, 관리자 설정에서 켜고 끔)
 
 ## 배포
 
@@ -118,7 +120,7 @@ npm run dev
 | 고객 | POST | `/api/customer/links/{token}/items/{itemId}/photo` | 사진 올리기 (이미지 전용) |
 | 고객 | POST/GET/DELETE | `/api/customer/links/{token}/documents` | 문서 임시 올리기·목록·취소 (자동 분류용) |
 | 고객 | POST | `/api/customer/links/{token}/items/{itemId}/attach-document` | 임시 문서를 제출 항목에 확정 |
-| 고객 | POST | `/api/customer/links/{token}/submit` | 최종 제출 |
+| 고객 | POST | `/api/customer/links/{token}/submit` | 제출 — `{itemIds}` 로 고른 항목만 (일부 먼저 제출 가능) |
 | 관리자 | GET | `/api/admin/companies` | 기업 목록/검색(상태 포함) |
 | 관리자 | POST | `/api/admin/companies` | 기업 등록 |
 | 관리자 | POST/DELETE | `/api/admin/companies/{id}/link` | 제출 링크 발급·재발급 / 끄기 |

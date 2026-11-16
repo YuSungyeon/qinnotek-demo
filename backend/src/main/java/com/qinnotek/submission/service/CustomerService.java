@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -59,41 +60,38 @@ public class CustomerService {
         return buildStatus(company, items);
     }
 
+    /**
+     * 고객 화면 상태. 일부만 먼저 낼 수 있으므로, 아직 낼 항목(미제출·반환)이 있으면
+     * 검수 중인 항목이 있어도 화면을 잠그지 않고 그 항목들을 보여준다.
+     */
     private CustomerStatusResponse buildStatus(Company company, List<SubmissionItem> items) {
-        boolean anyReturned = items.stream().anyMatch(i -> i.getStatus() == SubmissionStatus.RETURNED);
-        boolean anySubmitted = items.stream().anyMatch(i -> i.getStatus() == SubmissionStatus.SUBMITTED);
-        boolean anyPending = items.stream().anyMatch(i -> i.getStatus() == SubmissionStatus.PENDING);
+        // 반환된 항목을 먼저, 이어서 아직 안 낸 항목 (각각 원래 순서 유지)
+        List<CustomerItemResponse> toUpload = items.stream()
+                .filter(SubmissionItem::isActionableByCustomer)
+                .sorted(Comparator.comparing((SubmissionItem i) -> i.getStatus() != SubmissionStatus.RETURNED))
+                .map(CustomerItemResponse::from)
+                .toList();
+        List<String> reviewing = items.stream()
+                .filter(i -> i.getStatus() == SubmissionStatus.SUBMITTED)
+                .map(i -> i.getRequirement().getName())
+                .toList();
+        int approved = (int) items.stream().filter(i -> i.getStatus() == SubmissionStatus.APPROVED).count();
 
-        if (anyReturned) {
-            // 반환: 반환된 항목만 표시
-            List<CustomerItemResponse> returned = items.stream()
-                    .filter(i -> i.getStatus() == SubmissionStatus.RETURNED)
-                    .map(CustomerItemResponse::from)
-                    .toList();
-            return new CustomerStatusResponse(company.getId(), company.getName(),
-                    CustomerStatusResponse.State.RETURNED.name(),
-                    "반환된 항목을 다시 제출해주세요.", returned);
+        CustomerStatusResponse.State state;
+        String message;
+        if (!toUpload.isEmpty()) {
+            boolean onlyReturned = items.stream().noneMatch(i -> i.getStatus() == SubmissionStatus.PENDING);
+            state = onlyReturned ? CustomerStatusResponse.State.RETURNED : CustomerStatusResponse.State.INITIAL;
+            message = onlyReturned ? "반환된 항목을 다시 제출해주세요." : "필요한 항목을 올려 제출해주세요. 일부만 먼저 보낼 수도 있어요.";
+        } else if (!reviewing.isEmpty()) {
+            state = CustomerStatusResponse.State.UNDER_REVIEW;
+            message = "현재 관리자가 제출본을 확인 중입니다.";
+        } else {
+            state = CustomerStatusResponse.State.COMPLETED;
+            message = "모든 항목이 통과되었습니다. 감사합니다.";
         }
-        if (anySubmitted) {
-            // 검수 대기: 추가 제출 불가
-            return new CustomerStatusResponse(company.getId(), company.getName(),
-                    CustomerStatusResponse.State.UNDER_REVIEW.name(),
-                    "현재 관리자가 제출본을 확인 중입니다.", List.of());
-        }
-        if (anyPending) {
-            // 최초 제출: 모든 필수 항목 표시
-            List<CustomerItemResponse> pending = items.stream()
-                    .filter(i -> i.getStatus() == SubmissionStatus.PENDING)
-                    .map(CustomerItemResponse::from)
-                    .toList();
-            return new CustomerStatusResponse(company.getId(), company.getName(),
-                    CustomerStatusResponse.State.INITIAL.name(),
-                    "필요한 항목을 모두 올린 후 제출해주세요.", pending);
-        }
-        // 모두 통과
         return new CustomerStatusResponse(company.getId(), company.getName(),
-                CustomerStatusResponse.State.COMPLETED.name(),
-                "모든 항목이 통과되었습니다. 감사합니다.", List.of());
+                state.name(), message, toUpload, reviewing, approved);
     }
 
     /**
@@ -127,26 +125,35 @@ public class CustomerService {
     }
 
     /**
-     * 최종 제출. 대상(미제출/반환) 항목이 모두 업로드된 경우에만 검수 대기로 전환.
+     * 제출. 고객이 고른 항목만 검수 대기로 넘긴다 - 일부만 먼저 내고 남은 항목은 같은 링크로 이어서 낸다.
+     *
+     * @param itemIds 낼 항목. null 이면 파일을 올려 둔 항목을 모두 낸다.
+     *                고른 항목은 모두 파일이 있어야 하고, 이 기업의 낼 수 있는 항목이 아닌 id 는 무시한다.
+     *                (화면에 보이지 않는, 예전에 올리다 만 파일이 고객 모르게 같이 제출되지 않도록 목록을 받는다)
      */
     @Transactional
-    public CustomerStatusResponse submit(String token) {
+    public CustomerStatusResponse submit(String token, List<Long> itemIds) {
         Company company = resolve(token);
         List<SubmissionItem> items = submissionItemRepository.findByCompanyIdWithRequirement(company.getId());
         List<SubmissionItem> actionable = items.stream()
                 .filter(SubmissionItem::isActionableByCustomer)
                 .toList();
 
-        if (actionable.isEmpty()) {
+        List<SubmissionItem> targets;
+        if (itemIds == null) {
+            targets = actionable.stream().filter(SubmissionItem::hasFile).toList();
+        } else {
+            targets = actionable.stream().filter(i -> itemIds.contains(i.getId())).toList();
+            if (targets.stream().anyMatch(i -> !i.hasFile())) {
+                throw BusinessException.badRequest("아직 올리지 않은 항목이 있습니다.");
+            }
+        }
+        if (targets.isEmpty()) {
             throw BusinessException.badRequest("제출할 항목이 없습니다.");
         }
-        boolean allUploaded = actionable.stream().allMatch(SubmissionItem::hasFile);
-        if (!allUploaded) {
-            throw BusinessException.badRequest("아직 올리지 않은 항목이 있습니다.");
-        }
 
-        actionable.forEach(SubmissionItem::submit);
-        smsService.notifyManagersOnSubmission(company.getId(), company.getName());
+        targets.forEach(SubmissionItem::submit);
+        smsService.notifyManagersOnSubmission(company.getId(), company.getName(), targets.size());
 
         return buildStatus(company, items);
     }

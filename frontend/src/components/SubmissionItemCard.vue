@@ -16,7 +16,9 @@ const props = defineProps({
   /** AI 자동 배정 여부 (확인 필요 표시) */
   auto: { type: Boolean, default: false },
   /** 위치 바꾸기 버튼 노출 여부 (항목이 2개 이상일 때) */
-  swappable: { type: Boolean, default: false }
+  swappable: { type: Boolean, default: false },
+  /** 잠깐 테두리로 강조 ('빈 항목 채우기'로 이동했을 때) */
+  highlight: { type: Boolean, default: false }
 })
 const emit = defineEmits(['select', 'select-doc', 'zoom', 'swap'])
 
@@ -87,7 +89,7 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="item-card"
-    :class="{ done: filled, returned: item.status === 'RETURNED' }"
+    :class="{ done: filled, returned: item.status === 'RETURNED', highlight }"
     :data-item-id="item.itemId"
   >
     <div class="head">
@@ -174,7 +176,11 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.3s;
+}
+.item-card.highlight {
+  border-color: transparent;
+  box-shadow: var(--ring);
 }
 .item-card.done {
   background: var(--primary-soft);

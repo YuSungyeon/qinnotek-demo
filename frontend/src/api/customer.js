@@ -18,8 +18,9 @@ export const customerApi = {
       })
       .then((r) => r.data)
   },
-  submit(token) {
-    return client.post(`${base(token)}/submit`).then((r) => r.data)
+  // 고른 항목만 낸다 (일부만 먼저 보낼 수 있다)
+  submit(token, itemIds) {
+    return client.post(`${base(token)}/submit`, { itemIds }).then((r) => r.data)
   },
 
   // --- 문서: 분류를 위해 먼저 서버로 올린 뒤, 확정은 전송 단계에서 한다 ---

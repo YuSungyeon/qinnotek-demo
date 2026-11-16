@@ -43,14 +43,63 @@ const progressPct = computed(() =>
 // 항목 구성에 맞춰 문구를 바꾼다 (사진만 / 서류만 / 섞임)
 const unit = computed(() => {
   const types = new Set(items.value.map((i) => i.fileType || 'PHOTO'))
-  // obj: 수량 뒤 목적격 조사 (5건을 / 5개를 / 5장을)
-  if (types.size === 1 && types.has('DOCUMENT')) return { noun: '서류', counter: '건', obj: '을', verb: '올려' }
-  if (types.has('DOCUMENT')) return { noun: '자료', counter: '개', obj: '를', verb: '올려' }
-  return { noun: '사진', counter: '장', obj: '을', verb: '촬영해' }
+  // obj / subj: 수량 뒤 목적격·주격 조사 (5건을·5건이 / 5개를·5개가 / 5장을·5장이)
+  if (types.size === 1 && types.has('DOCUMENT'))
+    return { noun: '서류', counter: '건', obj: '을', subj: '이', verb: '올려' }
+  if (types.has('DOCUMENT')) return { noun: '자료', counter: '개', obj: '를', subj: '가', verb: '올려' }
+  return { noun: '사진', counter: '장', obj: '을', subj: '이', verb: '촬영해' }
 })
 const showUploadUI = computed(
   () => status.value && ['INITIAL', 'RETURNED'].includes(status.value.state)
 )
+
+// --- 부분 제출: 먼저 보낸 항목 ---
+const reviewingNames = computed(() => status.value?.reviewingNames ?? [])
+const approvedCount = computed(() => status.value?.approvedCount ?? 0)
+const hasSentBefore = computed(() => reviewingNames.value.length > 0 || approvedCount.value > 0)
+
+const headTitle = computed(() => {
+  const n = items.value.length
+  const u = unit.value
+  if (status.value?.state === 'RETURNED') return `${n}${u.counter}만 다시 ${u.verb} 주세요.`
+  return `${u.noun} ${n}${u.counter}${u.obj} ${hasSentBefore.value ? '마저 ' : ''}${u.verb} 주세요.`
+})
+
+/** 먼저 보낸 항목 안내 (검수 중 / 검수 결과). 보낸 적이 없으면 null */
+const sentNotice = computed(() => {
+  if (!showUploadUI.value) return null
+  const reviewing = reviewingNames.value
+  if (reviewing.length) {
+    return { done: false, title: `먼저 보낸 ${reviewing.length}개는 확인 중이에요`, sub: reviewing.join(' · ') }
+  }
+  const approved = approvedCount.value
+  if (!approved) return null
+  const returned = items.value.filter((i) => i.status === 'RETURNED').length
+  if (!returned) {
+    return { done: true, title: `먼저 보낸 ${approved}개가 모두 통과됐어요`, sub: '남은 항목을 마저 올려 주세요.' }
+  }
+  return {
+    done: true,
+    title: `보낸 ${approved + returned}개 중 ${approved}개가 통과됐어요`,
+    sub: '반환된 항목은 사유를 보고 다시 올려 주세요.'
+  }
+})
+
+// --- 일부만 채우고 전송했을 때 묻는 시트 ---
+const partialOpen = ref(false)
+const emptyItems = computed(() => items.value.filter((i) => !selection[i.itemId]))
+const fileTypeLabel = { PHOTO: '사진', DOCUMENT: '서류', ANY: '사진 또는 서류' }
+
+// 이동한 항목을 잠깐 테두리로 강조
+const highlightId = ref(null)
+let highlightTimer = null
+function focusItem(itemId) {
+  partialOpen.value = false
+  scrollToItem(itemId, 'center')
+  highlightId.value = itemId
+  clearTimeout(highlightTimer)
+  highlightTimer = setTimeout(() => (highlightId.value = null), 1600)
+}
 
 function clearSelected() {
   Object.keys(selection).forEach((k) => delete selection[k])
@@ -381,17 +430,25 @@ function goToNext() {
   })
 }
 
-async function submit() {
+function submit() {
   submitHint.value = ''
-  if (!allSelected.value) {
-    // 미선택 항목으로 스크롤 + 안내
-    const missing = items.value.find((i) => !selection[i.itemId])
-    if (missing) {
-      submitHint.value = `'${missing.name}' 항목을 선택해주세요.`
-      scrollToItem(missing.itemId, 'center')
+  if (allSelected.value) return send()
+  if (selectedCount.value === 0) {
+    // 하나도 안 골랐으면 첫 항목으로 안내
+    const first = emptyItems.value[0]
+    if (first) {
+      submitHint.value = `'${first.name}' 항목을 선택해주세요.`
+      focusItem(first.itemId)
     }
     return
   }
+  // 일부만 채웠으면 먼저 보낼지 묻는다 (기본은 빈 항목 채우기)
+  partialOpen.value = true
+}
+
+/** 고른 항목만 올리고 제출한다. 남은 항목은 같은 링크로 이어서 낸다. */
+async function send() {
+  partialOpen.value = false
   submitting.value = true
   error.value = ''
   try {
@@ -435,7 +492,8 @@ async function submit() {
 
     // 4) 제출 확정
     uploadStatus.value = '제출 처리 중…'
-    status.value = await customerApi.submit(props.token)
+    const sentIds = [...photoItems, ...docItems].map((i) => i.itemId)
+    status.value = await customerApi.submit(props.token, sentIds)
     clearSelected()
     window.scrollTo({ top: 0 })
   } catch (err) {
@@ -517,15 +575,22 @@ async function submit() {
         <template v-else>
           <div class="progress-head">
             <span class="company-chip">{{ status.companyName }}</span>
-            <h1 class="ph-title">
-              {{ status.state === 'RETURNED'
-                ? `${items.length}${unit.counter}만 다시 ${unit.verb} 주세요.`
-                : `${unit.noun} ${items.length}${unit.counter}${unit.obj} ${unit.verb} 주세요.` }}
-            </h1>
+            <h1 class="ph-title">{{ headTitle }}</h1>
             <div class="ph-row">
               <div class="ph-bar"><div class="ph-fill" :style="{ width: progressPct + '%' }"></div></div>
               <span class="ph-count">{{ items.length }}{{ unit.counter }} 중 <b>{{ selectedCount }}{{ unit.counter }}</b></span>
             </div>
+          </div>
+
+          <!-- 먼저 보낸 항목 (부분 제출 후) -->
+          <div v-if="sentNotice" class="sent-notice">
+            <span class="sn-icon" :class="{ done: sentNotice.done }">
+              <Icon :name="sentNotice.done ? 'check' : 'clock'" :size="22" />
+            </span>
+            <span class="sn-text">
+              <b>{{ sentNotice.title }}</b>
+              <small>{{ sentNotice.sub }}</small>
+            </span>
           </div>
 
 
@@ -562,6 +627,7 @@ async function submit() {
               :selection="selection[item.itemId] || null"
               :auto="!!autoAssigned[item.itemId]"
               :swappable="items.length > 1"
+              :highlight="highlightId === item.itemId"
               @select="onSelect"
               @select-doc="onSelectDoc"
               @swap="openSwap"
@@ -574,7 +640,7 @@ async function submit() {
 
           <div class="submit-bar">
             <p v-if="!allSelected && !submitting" class="bar-hint">
-              {{ unit.noun }} {{ items.length - selectedCount }}{{ unit.counter }}이 더 필요해요
+              {{ unit.noun }} {{ items.length - selectedCount }}{{ unit.counter }}{{ unit.subj }} 더 필요해요
             </p>
             <button
               class="btn btn-lg btn-block"
@@ -607,6 +673,39 @@ async function submit() {
               </button>
             </div>
             <button class="btn btn-ghost btn-block sheet-cancel" @click="closeSwap">취소</button>
+          </div>
+        </div>
+
+        <!-- 일부만 채우고 전송: 먼저 보낼지 묻기 (기본은 빈 항목 채우기) -->
+        <div v-if="partialOpen" class="sheet-mask" @click.self="partialOpen = false">
+          <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="partial-title">
+            <p id="partial-title" class="sheet-title partial-title">아직 {{ emptyItems.length }}개 항목이 비어 있어요</p>
+            <p class="sheet-sub">
+              올린 {{ selectedCount }}{{ unit.counter }}{{ unit.obj }} 먼저 보낼까요? 나머지는 같은 링크로 나중에 보낼 수 있어요.
+            </p>
+            <div class="sheet-list">
+              <button v-for="row in emptyItems" :key="row.itemId" class="sheet-row" @click="focusItem(row.itemId)">
+                <span class="sheet-thumb">
+                  <img
+                    v-if="row.fileType !== 'DOCUMENT' && row.exampleImageUrl"
+                    :src="absoluteUrl(row.exampleImageUrl)"
+                    alt=""
+                  />
+                  <Icon v-else :name="row.fileType === 'DOCUMENT' ? 'fileText' : 'image'" :size="24" />
+                </span>
+                <span class="sheet-info">
+                  <b>{{ row.name }}</b>
+                  <small>{{ fileTypeLabel[row.fileType] || '사진' }} · 비어 있음</small>
+                </span>
+                <Icon name="arrowRight" :size="22" class="sheet-arrow" />
+              </button>
+            </div>
+            <button class="btn btn-lg btn-block partial-btn" @click="focusItem(emptyItems[0].itemId)">
+              빈 항목 채우기
+            </button>
+            <button class="btn btn-ghost btn-lg btn-block partial-btn" @click="send">
+              {{ selectedCount }}{{ unit.counter }} 먼저 보내기
+            </button>
           </div>
         </div>
 
@@ -857,6 +956,65 @@ async function submit() {
 .ph-count b {
   color: var(--ink);
   font-weight: 652;
+}
+
+/* 먼저 보낸 항목 안내 (부분 제출 후) */
+.sent-notice {
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--hairline-soft);
+  border-radius: 16px;
+}
+.sn-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 30%;
+  background: var(--canvas-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sn-icon.done {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.sn-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sn-text b {
+  font-size: 20px;
+  font-weight: 652;
+  line-height: 1.35;
+}
+.sn-text small {
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* 일부만 채우고 전송했을 때의 시트 */
+.partial-title {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.sheet-sub {
+  flex: 0 0 auto;
+  margin: 0 0 16px;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.partial-btn {
+  flex: 0 0 auto;
+  margin-top: 8px;
 }
 .items {
   display: flex;
