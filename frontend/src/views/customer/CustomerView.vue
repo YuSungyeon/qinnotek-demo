@@ -178,8 +178,9 @@ async function classifyPhotos(files) {
   aiDebug.value = assigned.map((a) => ({
     slot: nameOf(a.itemId),
     file: a.file.name,
-    score: Math.round(a.score * 100),
-    margin: Math.round(a.margin * 100),
+    // 확률 아님: 사진은 슬롯 평균 대비 z-점수(σ, 최대 √(슬롯수−1)), 서류는 키워드 가중치 합
+    score: Math.round(a.score * 10) / 10,
+    margin: Math.round(a.margin * 10) / 10,
     second: a.secondItemId ? nameOf(a.secondItemId) : '-'
   }))
   return assigned.length
@@ -226,7 +227,7 @@ function applyStaged(list) {
     ...list.map((d) => ({
       slot: d.suggestedItemId ? nameOf(d.suggestedItemId) : '(배정 없음)',
       file: d.originalFileName,
-      score: Math.round((d.score || 0) * 100),
+      score: Math.round((d.score || 0) * 10) / 10,
       margin: 0,
       second: d.confidence || '-'
     }))
@@ -666,7 +667,7 @@ async function submit() {
           <div v-for="(r, i) in aiDebug" :key="i" class="ai-debug-row">
             <b>{{ r.slot }}</b> ← {{ r.file }}
             <span class="ai-debug-meta">
-              확신 {{ r.score }}% · 2위({{ r.second }})와 차이 {{ r.margin >= 0 ? '+' : '' }}{{ r.margin }}%p
+              점수 {{ r.score }} · 2위({{ r.second }})와 차이 {{ r.margin >= 0 ? '+' : '' }}{{ r.margin }}
             </span>
           </div>
         </template>
