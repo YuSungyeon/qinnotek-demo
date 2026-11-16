@@ -101,7 +101,9 @@ public class StagedDocumentService {
             throw BusinessException.badRequest("'" + item.getRequirement().getName() + "' 항목은 사진만 제출할 수 있습니다.");
         }
 
-        StagedDocument staged = stagedDocumentRepository.findById(stagedId)
+        // 변환 결과 기록(DocumentProcessor)과 순서를 맞추려고 잠그고 읽는다.
+        // 변환이 아직이면 PENDING 그대로 붙고, 변환이 끝날 때 항목에 PDF 사본이 이어 붙는다.
+        StagedDocument staged = stagedDocumentRepository.findByIdForUpdate(stagedId)
                 .orElseThrow(() -> BusinessException.notFound("올린 문서를 찾을 수 없습니다."));
         if (staged.getState() != StagedState.STAGED) {
             throw BusinessException.badRequest("이미 사용된 문서입니다.");
@@ -125,7 +127,7 @@ public class StagedDocumentService {
     /** 고객이 올린 문서를 취소한다. */
     @Transactional
     public void discard(Long companyId, Long stagedId) {
-        StagedDocument staged = stagedDocumentRepository.findById(stagedId)
+        StagedDocument staged = stagedDocumentRepository.findByIdForUpdate(stagedId)
                 .filter(d -> d.getCompany().getId().equals(companyId))
                 .orElse(null);
         if (staged == null) {

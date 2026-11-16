@@ -97,6 +97,12 @@ public class SubmissionItem {
         this.pdfStatus = pdfStatus;
     }
 
+    /** 변환이 끝나기 전에 확정된 문서 - 나중에 끝난 변환 결과(PDF 사본)를 반영한다. */
+    public void updatePdf(String pdfFileName, ConversionStatus pdfStatus) {
+        this.pdfFileName = pdfFileName;
+        this.pdfStatus = pdfStatus;
+    }
+
     /** null(레거시 행)은 사진으로 본다. */
     public ContentKind getContentKind() {
         return contentKind == null ? ContentKind.PHOTO : contentKind;

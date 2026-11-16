@@ -21,6 +21,9 @@ public interface SubmissionItemRepository extends JpaRepository<SubmissionItem, 
 
     boolean existsByRequirementId(Long requirementId);
 
+    /** 저장 파일명(UUID)으로 그 파일을 들고 있는 항목을 찾는다 - 변환이 늦게 끝난 문서의 PDF 사본 반영용 */
+    java.util.Optional<SubmissionItem> findByStoredFileName(String storedFileName);
+
     // --- 알림 배지용 경량 카운트 ---
     long countByStatus(SubmissionStatus status);
 
