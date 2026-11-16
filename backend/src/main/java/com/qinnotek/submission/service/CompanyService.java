@@ -42,6 +42,7 @@ public class CompanyService {
     private final SmsService smsService;
     private final AppProperties appProperties;
     private final SubmissionHistoryService historyService;
+    private final ArchiveService archiveService;
 
     public List<CompanySummaryResponse> search(String keyword) {
         List<Company> companies;
@@ -79,6 +80,7 @@ public class CompanyService {
             throw BusinessException.conflict("이미 등록된 기업명입니다: " + trimmed);
         }
         Company saved = companyRepository.save(new Company(trimmed));
+        archiveService.createCompanyFolder(trimmed);
         return CompanyDetailResponse.of(saved, CompanyStatus.NONE, List.of(), List.of());
     }
 
@@ -89,7 +91,11 @@ public class CompanyService {
         if (!company.getName().equals(trimmed) && companyRepository.existsByName(trimmed)) {
             throw BusinessException.conflict("이미 등록된 기업명입니다: " + trimmed);
         }
+        String oldName = company.getName();
         company.changeName(trimmed);
+        if (!oldName.equals(trimmed)) {
+            archiveService.renameCompanyFolder(oldName, trimmed);
+        }
         return getDetail(id);
     }
 

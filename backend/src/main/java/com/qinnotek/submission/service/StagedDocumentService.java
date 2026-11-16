@@ -34,6 +34,7 @@ public class StagedDocumentService {
     private final FileStorageService fileStorageService;
     private final DocumentProcessor documentProcessor;
     private final DocumentClassifier documentClassifier;
+    private final ArchiveService archiveService;
 
     /**
      * 문서를 임시 보관하고 변환/추출 작업을 예약한다. 변환은 비동기라 즉시 반환된다.
@@ -119,6 +120,7 @@ public class StagedDocumentService {
         item.attachDocument(staged.getStoredFileName(), staged.getOriginalFileName(),
                 staged.getStoragePath(), staged.getPdfFileName(), staged.getConversionStatus());
         staged.consume();
+        archiveService.copy(item);
 
         deleteReplaced(oldStored, oldPdf, item);
         return CustomerItemResponse.from(item);

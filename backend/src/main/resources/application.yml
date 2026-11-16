@@ -62,6 +62,15 @@ app:
     dir: ./uploads
     max-image-bytes: 20MB
     max-document-bytes: 30MB
+  # NAS 기업별 보관 폴더 - {dir}/{기업명}/{요청자료명}.{확장자}. 서버에 마운트한 경로. 비어있으면 끔
+  # 예) 리눅스 /mnt/nas/제출자료, 윈도우 Z:/제출자료 또는 //nas/share/제출자료
+  archive:
+    dir: ${ARCHIVE_DIR:}
+  # ClamAV 바이러스 검사 (DEPLOY.md "바이러스 검사"). 켜면 clamd 가 응답하지 않을 때 업로드를 막는다
+  virus-scan:
+    enabled: ${VIRUS_SCAN_ENABLED:false}
+    host: ${CLAMD_HOST:localhost}
+    port: ${CLAMD_PORT:3310}
   document:
     # 비어있으면 SOFFICE_BIN 환경변수 → 관례적 경로 순으로 자동 탐지
     soffice-bin: ${SOFFICE_BIN:}

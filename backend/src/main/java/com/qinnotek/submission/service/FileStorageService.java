@@ -41,8 +41,10 @@ public class FileStorageService {
     private final Path tmpRoot;
     private final long maxImageBytes;
     private final long maxDocumentBytes;
+    private final VirusScanner virusScanner;
 
-    public FileStorageService(AppProperties appProperties) {
+    public FileStorageService(AppProperties appProperties, VirusScanner virusScanner) {
+        this.virusScanner = virusScanner;
         this.uploadRoot = Paths.get(appProperties.getUpload().getDir()).toAbsolutePath().normalize();
         this.tmpRoot = uploadRoot.resolve(".tmp");
         this.maxImageBytes = appProperties.getUpload().getMaxImageBytes().toBytes();
@@ -161,6 +163,13 @@ public class FileStorageService {
 
         if (!MagicBytes.matches(readHead(file), ext)) {
             throw BusinessException.badRequest("파일 내용이 확장자와 일치하지 않습니다.");
+        }
+
+        // 모든 업로드(사진·문서·예시 이미지)가 여기를 지난다 - 저장 전에 검사한다
+        try (InputStream in = file.getInputStream()) {
+            virusScanner.check(in, file.getOriginalFilename());
+        } catch (IOException e) {
+            throw BusinessException.badRequest("파일을 읽을 수 없습니다.");
         }
     }
 

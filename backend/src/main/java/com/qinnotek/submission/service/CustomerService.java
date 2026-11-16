@@ -31,6 +31,7 @@ public class CustomerService {
     private final FileStorageService fileStorageService;
     private final SmsService smsService;
     private final SubmissionHistoryService historyService;
+    private final ArchiveService archiveService;
 
     /**
      * 링크 토큰으로 기업을 확정한다. 없는 토큰은 404, 기간이 지난 토큰은 410.
@@ -115,6 +116,7 @@ public class CustomerService {
         String oldPdf = item.getPdfFileName();
         FileStorageService.StoredFile stored = fileStorageService.store(file);
         item.attachPhoto(stored.storedFileName(), stored.originalFileName(), stored.storagePath());
+        archiveService.copy(item);
         // 기존 파일 교체 - 문서였다면 PDF 사본도 함께 지운다(원본이 PDF 면 같은 파일이라 한 번만)
         if (oldStored != null && !oldStored.equals(stored.storedFileName())) {
             fileStorageService.delete(oldStored);

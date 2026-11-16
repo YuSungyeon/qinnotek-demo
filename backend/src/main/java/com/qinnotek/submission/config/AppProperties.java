@@ -30,6 +30,26 @@ public class AppProperties {
     private final Cors cors = new Cors();
     private final Sms sms = new Sms();
     private final Document document = new Document();
+    private final Archive archive = new Archive();
+    private final VirusScan virusScan = new VirusScan();
+
+    @Getter
+    @Setter
+    public static class Archive {
+        /** NAS 기업별 보관 폴더(서버에 마운트한 경로). 비어있으면 끔 */
+        private String dir = "";
+    }
+
+    @Getter
+    @Setter
+    public static class VirusScan {
+        /** ClamAV(clamd) 검사. 켜면 clamd 가 응답하지 않을 때 업로드를 막는다 */
+        private boolean enabled = false;
+        private String host = "localhost";
+        private int port = 3310;
+        /** 연결·응답 제한 시간 */
+        private java.time.Duration timeout = java.time.Duration.ofSeconds(60);
+    }
 
     @Getter
     @Setter

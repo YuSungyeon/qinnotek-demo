@@ -157,6 +157,46 @@ curl https://api.qinnotek.minisub.store/actuator/health   # {"status":"UP"}
 
 ---
 
+## 바이러스 검사 · NAS 보관
+
+고객 업로드 → 확장자·크기·파일 시그니처 검사 → **ClamAV 바이러스 검사** → 서버 저장 →
+**NAS `{ARCHIVE_DIR}/{기업명}/{요청자료명}.{확장자}` 로 복사**. 기업을 만들면 NAS 에 폴더가 생기고, 이름을 바꾸면 폴더도 바뀐다.
+
+| 환경변수 | 비고 |
+| --- | --- |
+| `VIRUS_SCAN_ENABLED` | `true` 면 검사. clamd 가 응답하지 않으면 **업로드를 거부**한다(503) — 검사 안 된 파일을 받지 않는다 |
+| `CLAMD_HOST` / `CLAMD_PORT` | 기본 `localhost` / `3310` |
+| `ARCHIVE_DIR` | 서버에 마운트한 NAS 경로. 비우면 NAS 보관을 끈다 |
+
+**ClamAV (리눅스)**
+```bash
+sudo apt install -y clamav-daemon clamav-freshclam      # freshclam 이 바이러스 DB 를 자동 갱신
+sudo tee -a /etc/clamav/clamd.conf >/dev/null <<'CONF'
+TCPSocket 3310
+TCPAddr 127.0.0.1
+StreamMaxLength 50M
+CONF
+sudo systemctl restart clamav-daemon
+echo PING | nc localhost 3310                            # PONG 이면 정상
+```
+- `StreamMaxLength` 는 업로드 상한(문서 30MB)보다 커야 한다. 기본 25M 이면 큰 문서가 503 으로 막힌다.
+- 윈도우 서버: ClamAV 윈도우판을 설치하고 `clamd.conf` 에 같은 세 줄을 넣은 뒤 `freshclam` 실행, clamd 를 서비스로 등록한다.
+- 매크로가 든 오피스 문서까지 막으려면 `clamd.conf` 에 `AlertOLE2Macros yes` (정상 문서도 막힐 수 있음).
+
+**NAS 마운트 (리눅스)** — `/etc/fstab`
+```
+//NAS주소/공유폴더  /mnt/nas  cifs  credentials=/etc/nas-cred,uid=앱실행계정,iocharset=utf8,soft,_netdev  0 0
+```
+`ARCHIVE_DIR=/mnt/nas/제출자료`. `soft` 는 NAS 가 꺼졌을 때 파일 작업이 무한정 멈추지 않게 한다.
+윈도우 서버는 서비스 계정에 드라이브 문자(Z:)가 보이지 않으므로 `ARCHIVE_DIR=//NAS주소/공유폴더/제출자료` 처럼 UNC 경로로 쓴다.
+
+**동작**
+- NAS 복사는 업로드 직후 별도 스레드에서 한다. NAS 가 꺼져 있어도 업로드는 성공하고 로그에 `NAS 보관 실패` 가 남는다(자동 재시도 없음).
+- 같은 항목을 다시 올리면 NAS 사본을 덮어쓴다. 기업 삭제·요청 자료 해제 때 NAS 사본은 **지우지 않는다**.
+- 기능을 켜기 전에 올라온 파일은 NAS 로 옮겨지지 않는다.
+
+---
+
 ## SMS(Solapi) 알림 활성화
 
 고객이 사진을 제출하면 **관리자 설정 페이지(`/admin/settings`)에 저장한 번호**로 알림 문자가 발송됩니다.
