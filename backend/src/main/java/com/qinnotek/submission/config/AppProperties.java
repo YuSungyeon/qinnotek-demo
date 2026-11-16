@@ -15,6 +15,12 @@ import org.springframework.util.unit.DataSize;
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
 
+    /**
+     * 고객이 접속하는 프론트엔드 주소. 제출 링크 = publicUrl + "/s/" + 토큰.
+     * 문자로 보내는 링크는 이 값으로 서버가 만든다 (요청에서 받은 주소를 그대로 보내면 피싱 문자에 악용된다).
+     */
+    private String publicUrl = "http://localhost:5173";
+
     private final Upload upload = new Upload();
     private final Cors cors = new Cors();
     private final Sms sms = new Sms();

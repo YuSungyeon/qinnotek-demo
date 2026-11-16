@@ -68,7 +68,7 @@ public class AdminCompanyController {
     @Operation(summary = "제출 링크 문자 발송")
     @PostMapping("/{id}/link/sms")
     public void sendLinkSms(@PathVariable Long id, @Valid @RequestBody CompanyRequests.SendLink request) {
-        companyService.sendLinkSms(id, request.to(), request.url());
+        companyService.sendLinkSms(id, request.to());
     }
 
     @Operation(summary = "전화번호 등록/수정", description = "링크 문자 발송 시 기본 수신 번호")

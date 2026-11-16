@@ -71,6 +71,8 @@ app:
     abstain-score: 0.8
     low-score: 2.0
     low-margin: 0.8
+  # 고객이 접속하는 프론트엔드 주소. 문자로 보내는 제출 링크(= 이 주소 + /s/토큰)를 서버가 이 값으로 만든다
+  public-url: ${PUBLIC_URL:http://localhost:5173}
   cors:
     allowed-origins: "http://localhost:5173,http://localhost:4173"
   sms:
@@ -111,6 +113,7 @@ spring:
     baseline-description: "baseline - existing schema created by ddl-auto update"
 
 app:
+  public-url: ${PUBLIC_URL:https://qinnotek.minisub.store}
   upload:
     dir: ${UPLOAD_DIR:/var/app/uploads}
   cors:

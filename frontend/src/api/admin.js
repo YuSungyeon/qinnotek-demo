@@ -26,8 +26,9 @@ export const adminApi = {
   revokeLink(id) {
     return client.delete(`/api/admin/companies/${id}/link`).then((r) => r.data)
   },
-  sendLinkSms(id, to, url) {
-    return client.post(`/api/admin/companies/${id}/link/sms`, { to, url }).then((r) => r.data)
+  // 링크 주소는 서버가 직접 만든다 (받는 번호만 보낸다)
+  sendLinkSms(id, to) {
+    return client.post(`/api/admin/companies/${id}/link/sms`, { to }).then((r) => r.data)
   },
   updatePhone(id, phoneNumber) {
     return client.put(`/api/admin/companies/${id}/phone`, { phoneNumber }).then((r) => r.data)

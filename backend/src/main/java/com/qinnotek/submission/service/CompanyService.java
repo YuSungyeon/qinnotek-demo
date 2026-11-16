@@ -1,5 +1,6 @@
 package com.qinnotek.submission.service;
 
+import com.qinnotek.submission.config.AppProperties;
 import com.qinnotek.submission.domain.Company;
 import com.qinnotek.submission.domain.CompanyManager;
 import com.qinnotek.submission.domain.CompanyStatus;
@@ -38,6 +39,7 @@ public class CompanyService {
     private final CompanyManagerRepository companyManagerRepository;
     private final FileStorageService fileStorageService;
     private final SmsService smsService;
+    private final AppProperties appProperties;
 
     public List<CompanySummaryResponse> search(String keyword) {
         List<Company> companies;
@@ -151,16 +153,17 @@ public class CompanyService {
         return getDetail(id);
     }
 
-    /** 제출 링크를 문자로 보낸다. url 은 반드시 현재 토큰으로 끝나야 한다. */
-    public void sendLinkSms(Long id, String to, String url) {
+    /**
+     * 현재 제출 링크를 문자로 보낸다. 주소는 서버가 설정값(app.public-url)으로 만든다 -
+     * 요청에서 받은 주소를 보내면 회사 발신번호로 아무 사이트 주소나 보낼 수 있게 된다.
+     */
+    public void sendLinkSms(Long id, String to) {
         Company company = getOrThrow(id);
         String token = company.getAccessToken();
         if (token == null || company.isLinkExpired(LocalDateTime.now())) {
             throw BusinessException.badRequest("사용 중인 링크가 없습니다. 링크를 먼저 만들어주세요.");
         }
-        if (url == null || !url.endsWith("/s/" + token)) {
-            throw BusinessException.badRequest("현재 링크와 다릅니다. 화면을 새로고침해주세요.");
-        }
+        String url = appProperties.getPublicUrl().replaceAll("/+$", "") + "/s/" + token;
         String digits = to == null ? "" : to.replaceAll("\\D", "");
         if (digits.length() < 10 || digits.length() > 11) {
             throw BusinessException.badRequest("받는 번호를 확인해주세요.");

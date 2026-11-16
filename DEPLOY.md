@@ -100,6 +100,9 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 # 브라우저: https://api.qinnotek.minisub.store/swagger-ui.html
 ```
 
+> 프론트 도메인이 `https://qinnotek.minisub.store` 가 아니면 `/etc/photo-submission.env` 에 `PUBLIC_URL` 을 넣는다.
+> 관리자가 문자로 보내는 제출 링크 주소를 이 값으로 만든다.
+
 ## 5. 프론트 (Vercel)
 
 1. Vercel → **Add New → Project** → 이 저장소 import

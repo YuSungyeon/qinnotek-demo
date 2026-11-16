@@ -184,7 +184,7 @@ async function sendLinkSms() {
   smsSending.value = true
   smsMsg.value = ''
   try {
-    await adminApi.sendLinkSms(companyId.value, digits, linkUrl.value)
+    await adminApi.sendLinkSms(companyId.value, digits)
     smsMsg.value = `${formatPhone(digits)}로 보냈습니다.`
     smsOpen.value = false
   } catch (err) {
