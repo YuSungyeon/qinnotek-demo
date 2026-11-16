@@ -91,8 +91,9 @@ bash deploy/libreoffice-setup.sh
 `backend/` 변경을 main에 push하거나, **Actions → Deploy Backend to EC2 → Run workflow** 로 실행.
 
 배포되면 Actions가:
-1. `app.jar` 빌드 → EC2로 scp
-2. `/opt/photo-submission/app.jar` 교체 → `systemctl restart photo-submission`
+1. 테스트 실행 → 하나라도 실패하면 배포 중단
+2. `app.jar` 빌드 → EC2로 scp
+3. `/opt/photo-submission/app.jar` 교체 → `systemctl restart photo-submission`
 
 확인:
 ```bash
