@@ -48,7 +48,7 @@
 **Variables** 탭 → New repository variable:
 | Name | Value |
 | --- | --- |
-| `EC2_HOST` | EC2 **Elastic IP** (예: `16.170.162.142`) |
+| `EC2_HOST` | EC2 **Elastic IP** (예: `43.202.255.127`) |
 
 > 유저(`ubuntu`)만 워크플로에 하드코딩. IP는 Variable로 관리하므로 인스턴스가 바뀌어도 값만 수정하면 됩니다.
 
@@ -65,7 +65,7 @@
 ## 3. EC2 세팅 (최초 1회)
 
 ```bash
-ssh -i your-key.pem ubuntu@51.20.74.46
+ssh -i your-key.pem ubuntu@43.202.255.127
 
 git clone https://github.com/YuSungyeon/qinnotek-demo.git
 cd qinnotek-demo
@@ -114,7 +114,7 @@ curl https://api.qinnotek.minisub.store/v3/api-docs
 
 ## 체크리스트
 
-- [ ] DNS A: `api.qinnotek.minisub.store` → `51.20.74.46`
+- [ ] DNS A: `api.qinnotek.minisub.store` → `43.202.255.127`
 - [ ] GitHub Secret `EC2_SSH_KEY`
 - [ ] 보안그룹 22 / 80 / 443
 - [ ] `deploy/ec2-setup.sh` 실행 (DB_PASSWORD 보관)

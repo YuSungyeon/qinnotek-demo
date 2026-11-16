@@ -4,7 +4,7 @@
 # 백엔드(localhost:8080)를 https://api.qinnotek.minisub.store 로 노출한다.
 #
 # 사전 조건:
-#   - DNS A 레코드: api.qinnotek.minisub.store  ->  51.20.74.46  (전파 완료)
+#   - DNS A 레코드: api.qinnotek.minisub.store  ->  43.202.255.127  (전파 완료)
 #   - 보안그룹 인바운드 80, 443 개방
 #
 # 사용법:
