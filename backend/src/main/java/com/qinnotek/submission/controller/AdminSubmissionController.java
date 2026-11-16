@@ -2,9 +2,12 @@ package com.qinnotek.submission.controller;
 
 import com.qinnotek.submission.dto.admin.CompanySubmissionResponse;
 import com.qinnotek.submission.dto.admin.ReturnRequest;
+import com.qinnotek.submission.dto.admin.SubmissionEventResponse;
 import com.qinnotek.submission.dto.admin.SubmissionItemResponse;
 import com.qinnotek.submission.service.AdminSubmissionService;
 import com.qinnotek.submission.service.FileStorageService;
+import com.qinnotek.submission.service.ReturnNoticeService;
+import com.qinnotek.submission.service.SubmissionHistoryService;
 import com.qinnotek.submission.util.HttpFiles;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.util.List;
 import java.util.zip.ZipOutputStream;
 
 @Tag(name = "관리자-검수", description = "관리자 제출 자료 조회 및 검수 API")
@@ -27,6 +31,7 @@ public class AdminSubmissionController {
 
     private final AdminSubmissionService submissionService;
     private final FileStorageService fileStorageService;
+    private final SubmissionHistoryService historyService;
 
     @Operation(summary = "기업 제출 자료 조회", description = "기업명, 제출일시, 자료 목록")
     @GetMapping("/companies/{companyId}/submissions")
@@ -77,17 +82,32 @@ public class AdminSubmissionController {
                 .body(resource);
     }
 
-    @Operation(summary = "통과", description = "해당 자료를 승인")
+    @Operation(summary = "통과",
+            description = "해당 자료를 승인. 이걸로 그 기업의 검수를 마치면 모아 둔 반환 안내를 고객에게 보내고 결과(notice)를 함께 준다")
     @PostMapping("/submissions/{itemId}/approve")
-    public SubmissionItemResponse approve(@PathVariable Long itemId) {
+    public AdminSubmissionService.ReviewResult approve(@PathVariable Long itemId) {
         return submissionService.approve(itemId);
     }
 
-    @Operation(summary = "반환", description = "기존 파일 삭제 후 반환 상태/사유 저장. 반환 사유 필수")
+    @Operation(summary = "반환",
+            description = "반환 상태/사유 저장(사유 필수). 올린 파일은 처리 이력에 보관한다. "
+                    + "notifyCustomer(기본 true)면 그 기업의 검수를 마칠 때 반환 항목을 모아 고객에게 문자 1통으로 안내한다")
     @PostMapping("/submissions/{itemId}/return")
-    public SubmissionItemResponse markReturned(@PathVariable Long itemId,
-                                               @Valid @RequestBody ReturnRequest request) {
-        return submissionService.markReturned(itemId, request.reason());
+    public AdminSubmissionService.ReviewResult markReturned(@PathVariable Long itemId,
+                                                            @Valid @RequestBody ReturnRequest request) {
+        return submissionService.markReturned(itemId, request.reason(), request.notifyOrDefault());
+    }
+
+    @Operation(summary = "처리 이력", description = "제출·재제출·통과·반환·반환 안내·링크 발급 이력. 최신이 먼저")
+    @GetMapping("/companies/{companyId}/history")
+    public List<SubmissionEventResponse> history(@PathVariable Long companyId) {
+        return historyService.list(companyId);
+    }
+
+    @Operation(summary = "반환 안내 보내기", description = "지금 반환된 항목을 모아 고객에게 문자로 (다시) 안내한다")
+    @PostMapping("/companies/{companyId}/return-notice")
+    public ReturnNoticeService.Result sendReturnNotice(@PathVariable Long companyId) {
+        return submissionService.sendReturnNotice(companyId);
     }
 
     public record NoteRequest(String note) {

@@ -10,6 +10,7 @@ import {
   Download,
   Eye,
   FileText,
+  History,
   Info,
   Link2,
   Link2Off,
@@ -17,12 +18,14 @@ import {
   Pencil,
   RefreshCw,
   Trash2,
-  Users
+  Users,
+  X
 } from 'lucide-vue-next'
 import { adminApi } from '../../api/admin'
 import { absoluteUrl } from '../../api/client'
 import { companyChip, itemChip } from '../../lib/status'
 import { dateTime as fmtDate, phone as formatPhone } from '../../lib/format'
+import { HISTORY_FILTERS, describe, groupHistory, shortDateTime, timeOf } from '../../lib/history'
 
 const props = defineProps({ id: { type: String, required: true } })
 const router = useRouter()
@@ -76,7 +79,81 @@ const reqMsg = ref('')
 const returnTarget = ref(null)
 const returnReason = ref('')
 const returnConfirmed = ref(false)
+const returnNotify = ref(true) // 검수를 마치면 고객에게 반환 안내 보내기
 const processing = ref(false)
+
+// --- 처리 이력 / 반환 안내 ---
+const history = ref([]) // 서버 이벤트, 최신 먼저
+const historyFilter = ref('all')
+const historyGroups = computed(() => groupHistory(history.value, historyFilter.value))
+const itemHistoryTarget = ref(null) // 이력 창을 연 제출 항목
+const noticeResult = ref(null) // 방금 보낸(또는 못 보낸) 반환 안내 결과
+const noticeSending = ref(false)
+const noticePhone = ref('') // 연락처가 없을 때 바로 넣는 번호
+
+/** 항목별 이력 (최신 먼저) */
+const eventsByItem = computed(() => {
+  const map = {}
+  for (const e of history.value) {
+    if (e.itemId == null) continue
+    ;(map[e.itemId] ||= []).push(e)
+  }
+  return map
+})
+const itemEvents = (itemId) => eventsByItem.value[itemId] || []
+
+/** 재제출된 항목이면 { round, reason, thumb } - 이전 반환본과 사유를 카드에 함께 보여준다 */
+function resubmitInfo(item) {
+  if (item.status !== 'SUBMITTED') return null
+  const events = itemEvents(item.itemId)
+  const submitted = events.find((e) => e.type === 'SUBMITTED')
+  const lastReturn = events.find((e) => e.type === 'RETURNED')
+  if (!submitted || submitted.round < 2 || !lastReturn) return null
+  return {
+    round: submitted.round,
+    reason: lastReturn.reason,
+    thumb: lastReturn.contentKind === 'PHOTO' ? lastReturn.fileUrl : null,
+    fileUrl: lastReturn.contentKind !== 'PHOTO' ? lastReturn.pdfUrl || lastReturn.fileUrl : null
+  }
+}
+
+/** 이력 창: 이전 반환본(있으면)과 이 항목의 이력 */
+const itemHistoryView = computed(() => {
+  const item = itemHistoryTarget.value
+  if (!item) return null
+  const events = itemEvents(item.itemId)
+  const lastReturn = events.find((e) => e.type === 'RETURNED')
+  const submits = events.filter((e) => e.type === 'SUBMITTED').length
+  return {
+    item,
+    lastReturn,
+    lastReturnRound: lastReturn ? events.filter((e) => e.type === 'SUBMITTED' && e.id < lastReturn.id).length : 0,
+    submits,
+    returns: events.filter((e) => e.type === 'RETURNED').length,
+    rows: events.map((e) => ({ ...describe(e), id: e.id, when: shortDateTime(e.createdAt) }))
+  }
+})
+
+const reviewingLeft = computed(
+  () => (submission.value?.items || []).filter((i) => i.status === 'SUBMITTED' && i.itemId !== returnTarget.value?.itemId).length
+)
+const hasReturned = computed(() => (submission.value?.items || []).some((i) => i.status === 'RETURNED'))
+
+/** 검수 영역 위 안내: 방금 보낸 결과, 또는 아직 못 보낸 반환 안내 */
+const noticeBanner = computed(() => {
+  const n = noticeResult.value
+  if (n?.sent) {
+    return { sent: true, title: `검수를 마쳤어요. 반환 ${n.count}건 안내를 고객에게 문자로 보냈어요.`, sub: formatPhone(n.to) }
+  }
+  const pending = submission.value?.returnNotice
+  if (n || pending?.pending) {
+    return { sent: false, title: '반환 안내를 보내지 못했어요.', sub: n?.message || pending.message }
+  }
+  return null
+})
+// 못 보낸 이유에 맞는 해결 동작
+const noPhone = computed(() => !company.value?.phoneNumber)
+const linkOff = computed(() => !link.value || link.value.expired)
 
 // 기업명 수정 모달
 const showNameModal = ref(false)
@@ -117,16 +194,18 @@ async function loadAll() {
   loading.value = true
   error.value = ''
   try {
-    const [detail, reqs, mgrs, subs] = await Promise.all([
+    const [detail, reqs, mgrs, subs, events] = await Promise.all([
       adminApi.getCompany(companyId.value),
       adminApi.listRequirements(),
       adminApi.listManagers(),
-      adminApi.getSubmissions(companyId.value)
+      adminApi.getSubmissions(companyId.value),
+      adminApi.getHistory(companyId.value)
     ])
     company.value = detail
     requirements.value = reqs
     managers.value = mgrs
     submission.value = subs
+    history.value = events
     smsTo.value = formatPhone(detail.phoneNumber || '')
     selectedReqIds.value = [...detail.assignedRequirementIds]
     selectedManagerIds.value = [...(detail.assignedManagerIds || [])]
@@ -242,7 +321,9 @@ async function saveManagers() {
 async function approve(item) {
   processing.value = true
   try {
-    await adminApi.approve(item.itemId)
+    const result = await adminApi.approve(item.itemId)
+    if (result.notice) noticeResult.value = result.notice
+    itemHistoryTarget.value = null
     await refreshSubmissions()
   } catch (err) {
     error.value = err.message
@@ -252,9 +333,11 @@ async function approve(item) {
 }
 
 function openReturn(item) {
+  itemHistoryTarget.value = null
   returnTarget.value = item
   returnReason.value = ''
   returnConfirmed.value = false
+  returnNotify.value = true
 }
 function closeReturn() {
   returnTarget.value = null
@@ -263,7 +346,12 @@ async function confirmReturn() {
   if (!returnReason.value.trim()) return
   processing.value = true
   try {
-    await adminApi.markReturned(returnTarget.value.itemId, returnReason.value.trim())
+    const result = await adminApi.markReturned(
+      returnTarget.value.itemId,
+      returnReason.value.trim(),
+      returnNotify.value
+    )
+    if (result.notice) noticeResult.value = result.notice
     closeReturn()
     await refreshSubmissions()
   } catch (err) {
@@ -273,9 +361,43 @@ async function confirmReturn() {
   }
 }
 
+/** 반환 안내를 (다시) 보낸다. 연락처를 바로 넣었으면 먼저 저장한다 */
+async function sendNotice() {
+  noticeSending.value = true
+  error.value = ''
+  try {
+    if (noPhone.value) {
+      const digits = noticePhone.value.replace(/\D/g, '')
+      if (digits.length < 10) {
+        error.value = '받는 번호를 확인해주세요.'
+        return
+      }
+      company.value = await adminApi.updatePhone(companyId.value, digits)
+    }
+    noticeResult.value = await adminApi.sendReturnNotice(companyId.value)
+    await refreshSubmissions()
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    noticeSending.value = false
+  }
+}
+
+/** 링크가 꺼져서 못 보냈을 때: 새 링크를 만들고 바로 보낸다 */
+async function issueLinkAndNotify() {
+  await issueLink()
+  if (!error.value) await sendNotice()
+}
+
 async function refreshSubmissions() {
-  submission.value = await adminApi.getSubmissions(companyId.value)
-  company.value = await adminApi.getCompany(companyId.value)
+  const [subs, detail, events] = await Promise.all([
+    adminApi.getSubmissions(companyId.value),
+    adminApi.getCompany(companyId.value),
+    adminApi.getHistory(companyId.value)
+  ])
+  submission.value = subs
+  company.value = detail
+  history.value = events
 }
 
 // --- 기업명 수정 ---
@@ -490,6 +612,34 @@ onMounted(loadAll)
         </div>
       </div>
 
+      <!-- 반환 안내: 방금 보낸 결과 / 아직 못 보낸 안내 -->
+      <div v-if="noticeBanner" class="notice-banner" :class="{ failed: !noticeBanner.sent }" role="status">
+        <span v-if="noticeBanner.sent" class="nb-icon"><Check :size="18" /></span>
+        <span class="nb-text">
+          <b>{{ noticeBanner.title }}</b>
+          <small class="muted">{{ noticeBanner.sub }}</small>
+        </span>
+        <template v-if="!noticeBanner.sent && hasReturned">
+          <template v-if="noPhone">
+            <input
+              :value="noticePhone"
+              class="input nb-input"
+              type="tel"
+              inputmode="numeric"
+              placeholder="고객 연락처"
+              aria-label="고객 연락처"
+              @input="noticePhone = formatPhone($event.target.value)"
+            />
+            <button class="btn btn-sm" :disabled="noticeSending" @click="sendNotice">연락처 넣고 보내기</button>
+          </template>
+          <button v-else-if="linkOff" class="btn btn-sm" :disabled="noticeSending || linkBusy" @click="issueLinkAndNotify">
+            새 링크 만들고 보내기
+          </button>
+          <button v-else class="btn btn-sm" :disabled="noticeSending" @click="sendNotice">다시 보내기</button>
+        </template>
+        <button v-if="noticeResult" class="btn-text" aria-label="안내 닫기" @click="noticeResult = null"><X :size="15" /></button>
+      </div>
+
       <p v-if="!submission || submission.items.length === 0" class="muted">지정된 제출 항목이 없습니다.</p>
       <div v-else class="reviews">
         <!-- 검수 대기 카드만 파란 테두리 - 지금 결정할 것 -->
@@ -533,6 +683,16 @@ onMounted(loadAll)
               <span class="chip" :class="itemChip(item.status)">{{ item.statusLabel }}</span>
             </div>
 
+            <!-- 재제출: 이전 반환본과 사유를 함께 -->
+            <button v-if="resubmitInfo(item)" type="button" class="resubmit" @click="itemHistoryTarget = item">
+              <img v-if="resubmitInfo(item).thumb" :src="absoluteUrl(resubmitInfo(item).thumb)" alt="이전 반환본" class="resubmit-thumb" />
+              <span v-else class="resubmit-thumb doc"><FileText :size="18" /></span>
+              <span class="resubmit-text">
+                <b>재제출 · {{ resubmitInfo(item).round }}차</b>
+                <span class="muted">이전 반환 사유: {{ resubmitInfo(item).reason }}</span>
+              </span>
+            </button>
+
             <p v-if="item.status === 'RETURNED' && item.rejectReason" class="note-box">
               <CornerDownRight :size="14" /> <span><b>반환 사유</b> {{ item.rejectReason }}</span>
             </p>
@@ -559,11 +719,59 @@ onMounted(loadAll)
             <p v-else class="review-state muted small">
               {{ item.status === 'APPROVED' ? '승인 완료' : item.status === 'RETURNED' ? '고객 재제출 대기' : '고객 제출 대기' }}
             </p>
-            <button class="btn-text note-btn" @click="openNote(item)">
-              <Pencil :size="13" /> {{ item.adminNote ? '추가 설명 수정' : '추가 설명 작성' }}
-            </button>
+            <div class="card-links">
+              <button v-if="itemEvents(item.itemId).length" class="btn-text history-btn" @click="itemHistoryTarget = item">
+                <History :size="13" /> 이력 {{ itemEvents(item.itemId).length }}
+              </button>
+              <button class="btn-text" @click="openNote(item)">
+                <Pencil :size="13" /> {{ item.adminNote ? '추가 설명 수정' : '추가 설명 작성' }}
+              </button>
+            </div>
           </div>
         </article>
+      </div>
+    </section>
+
+    <!-- 처리 이력 -->
+    <section class="history-section">
+      <div class="section-head">
+        <h2 class="section-title">처리 이력</h2>
+        <div class="seg" role="group" aria-label="이력 종류">
+          <button
+            v-for="f in HISTORY_FILTERS"
+            :key="f.key"
+            :class="{ on: historyFilter === f.key }"
+            :aria-pressed="historyFilter === f.key"
+            @click="historyFilter = f.key"
+          >
+            {{ f.label }}
+          </button>
+        </div>
+      </div>
+      <p v-if="historyGroups.length === 0" class="muted">아직 이력이 없습니다.</p>
+      <div v-else class="history">
+        <template v-for="g in historyGroups" :key="g.label">
+          <p class="history-day">{{ g.label }}</p>
+          <div v-for="r in g.rows" :key="r.id" class="history-row">
+            <span class="hr-time">{{ timeOf(r.createdAt) }}</span>
+            <span class="chip hr-chip" :class="r.chipClass">{{ r.chip }}</span>
+            <span class="hr-text">
+              <b>{{ r.title }}</b> <span v-if="r.sub" class="muted">{{ r.sub }}</span>
+            </span>
+            <button
+              v-if="r.thumb"
+              type="button"
+              class="hr-thumb"
+              :aria-label="`${r.title} 사진 크게 보기`"
+              @click="lightbox = absoluteUrl(r.thumb)"
+            >
+              <img :src="absoluteUrl(r.thumb)" alt="" :class="{ gray: r.gray }" />
+            </button>
+            <a v-else-if="r.fileUrl" class="btn-text" :href="absoluteUrl(r.fileUrl)" target="_blank" rel="noopener">
+              <FileText :size="14" /> 파일
+            </a>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -571,7 +779,7 @@ onMounted(loadAll)
     <div v-if="returnTarget" class="modal-mask" @click.self="closeReturn">
       <div class="modal">
         <h3>'{{ returnTarget.requirementName }}'을(를) 반환할까요?</h3>
-        <p class="muted small">고객에게 사유가 보이고, 올린 파일은 지워집니다. 고객은 이 항목만 다시 올립니다.</p>
+        <p class="muted small">고객에게 사유가 보이고, 올린 파일은 처리 이력에 보관됩니다. 고객은 이 항목만 다시 올립니다.</p>
         <label class="label" for="return-reason">반환 사유 (필수)</label>
         <textarea
           id="return-reason"
@@ -580,6 +788,23 @@ onMounted(loadAll)
           rows="3"
           placeholder="예: 사진이 너무 어둡습니다."
         ></textarea>
+        <!-- 고객 알림: 검수를 다 마칠 때 반환 항목을 모아 한 통으로 -->
+        <div class="return-notice">
+          <b><MessageSquare :size="15" /> 고객 알림</b>
+          <p class="small">
+            {{ reviewingLeft
+              ? '이 기업의 검수를 모두 마치면 반환된 항목을 모아 문자 1통으로 보냅니다.'
+              : '이 반환으로 검수가 끝나 바로 보냅니다.' }}
+          </p>
+          <p class="small muted">
+            받는 번호 {{ company.phoneNumber ? formatPhone(company.phoneNumber) : '없음' }}
+            <template v-if="reviewingLeft"> · 남은 검수 {{ reviewingLeft }}건</template>
+          </p>
+          <label class="notify-check">
+            <input v-model="returnNotify" type="checkbox" />
+            <span>검수를 마치면 고객에게 반환 안내 보내기</span>
+          </label>
+        </div>
         <label class="confirm-check">
           <input v-model="returnConfirmed" type="checkbox" />
           <span>위 내용을 확인했습니다.</span>
@@ -691,6 +916,83 @@ onMounted(loadAll)
         <div class="modal-actions">
           <button class="btn btn-soft" @click="noteTarget = null">취소</button>
           <button class="btn" :disabled="savingNote" @click="saveNote">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 항목 이력: 이전 반환본과 지금 제출본 비교 + 이 항목의 이력 -->
+    <div v-if="itemHistoryView" class="modal-mask" @click.self="itemHistoryTarget = null">
+      <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="item-history-title">
+        <div class="ih-head">
+          <div>
+            <h3 id="item-history-title">{{ itemHistoryView.item.requirementName }} · 처리 이력</h3>
+            <p class="muted small">제출 {{ itemHistoryView.submits }}회 · 반환 {{ itemHistoryView.returns }}회</p>
+          </div>
+          <button class="icon-btn" aria-label="닫기" @click="itemHistoryTarget = null"><X :size="16" /></button>
+        </div>
+
+        <div v-if="itemHistoryView.lastReturn" class="ih-compare">
+          <div class="ih-col">
+            <div class="ih-label">
+              <span>{{ itemHistoryView.lastReturnRound }}차 · {{ shortDateTime(itemHistoryView.lastReturn.createdAt) }}</span>
+              <span class="chip chip-returned">반환</span>
+            </div>
+            <div class="ih-media">
+              <img
+                v-if="itemHistoryView.lastReturn.contentKind === 'PHOTO' && itemHistoryView.lastReturn.fileUrl"
+                :src="absoluteUrl(itemHistoryView.lastReturn.fileUrl)"
+                alt="이전 반환본"
+                class="gray"
+              />
+              <a
+                v-else-if="itemHistoryView.lastReturn.fileUrl"
+                class="ih-doc"
+                :href="absoluteUrl(itemHistoryView.lastReturn.pdfUrl || itemHistoryView.lastReturn.fileUrl)"
+                target="_blank"
+                rel="noopener"
+              >
+                <FileText :size="26" /> 반환본 열기
+              </a>
+              <span v-else class="ih-doc muted">보관된 파일 없음</span>
+            </div>
+            <p class="note-box"><span><b>반환 사유</b> {{ itemHistoryView.lastReturn.reason }}</span></p>
+          </div>
+          <div class="ih-col">
+            <div class="ih-label">
+              <span>지금</span>
+              <span class="chip" :class="itemChip(itemHistoryView.item.status)">{{ itemHistoryView.item.statusLabel }}</span>
+            </div>
+            <div class="ih-media">
+              <img
+                v-if="itemHistoryView.item.contentKind !== 'DOCUMENT' && itemHistoryView.item.fileUrl"
+                :src="absoluteUrl(itemHistoryView.item.fileUrl)"
+                :alt="itemHistoryView.item.requirementName"
+              />
+              <a
+                v-else-if="itemHistoryView.item.fileUrl"
+                class="ih-doc"
+                :href="absoluteUrl(itemHistoryView.item.pdfUrl || itemHistoryView.item.fileUrl)"
+                target="_blank"
+                rel="noopener"
+              >
+                <FileText :size="26" /> 제출본 열기
+              </a>
+              <span v-else class="ih-doc muted">아직 다시 올리지 않음</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ih-events">
+          <div v-for="r in itemHistoryView.rows" :key="r.id" class="ih-event">
+            <span class="hr-time">{{ r.when }}</span>
+            <span class="chip hr-chip" :class="r.chipClass">{{ r.chip }}</span>
+            <span class="hr-text">{{ r.sub || r.chip }}</span>
+          </div>
+        </div>
+
+        <div v-if="itemHistoryView.item.status === 'SUBMITTED'" class="modal-actions">
+          <button class="btn btn-ghost" :disabled="processing" @click="openReturn(itemHistoryView.item)">반환</button>
+          <button class="btn" :disabled="processing" @click="approve(itemHistoryView.item)"><Check :size="15" /> 통과</button>
         </div>
       </div>
     </div>
@@ -1029,8 +1331,281 @@ onMounted(loadAll)
 .review-state {
   margin: auto 0 0;
 }
-.note-btn {
-  align-self: flex-start;
+.card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.history-btn {
+  color: var(--ink);
+}
+
+/* 재제출 카드: 이전 반환본 + 사유 */
+.resubmit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--canvas-soft);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+}
+.resubmit-thumb {
+  width: 64px;
+  height: 48px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  object-fit: cover;
+  filter: grayscale(1) brightness(0.8);
+}
+.resubmit-thumb.doc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--canvas);
+  filter: none;
+}
+.resubmit-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* 반환 안내 결과 / 못 보낸 안내 */
+.notice-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--canvas-soft);
+}
+.notice-banner.failed {
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.nb-icon {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  border-radius: 30%;
+  background: var(--ink);
+  color: var(--on-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nb-text {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+}
+.nb-text b {
+  font-weight: 600;
+}
+.nb-text small {
+  font-size: 13px;
+}
+.nb-input {
+  width: 180px;
+  flex: 0 1 180px;
+}
+
+/* 처리 이력 */
+.history-section {
+  margin-top: 64px;
+}
+.history {
+  border: 1px solid var(--hairline-soft);
+  border-radius: var(--r-md);
+  padding: 4px 24px 12px;
+}
+.history-day {
+  margin: 16px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.history-row,
+.ih-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hairline-soft);
+}
+.history-day + .history-row {
+  border-top: 0;
+}
+.hr-time {
+  min-width: 44px;
+  font-size: 14px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hr-chip {
+  min-width: 64px;
+  justify-content: center;
+}
+.hr-text {
+  flex: 1 1 300px;
+  min-width: 0;
+  font-size: 15px;
+}
+.hr-text b {
+  font-weight: var(--w-heading);
+}
+.hr-thumb {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.hr-thumb img {
+  width: 64px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+.gray {
+  filter: grayscale(1) brightness(0.8);
+}
+/* 이력 칩: 검수 상태 칩과 겹치지 않는 두 가지 */
+.ev-soft {
+  background: var(--canvas-soft);
+  color: var(--ink);
+}
+.ev-line {
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+/* 반환 확인 창의 고객 알림 */
+.return-notice {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: var(--canvas-soft);
+}
+.return-notice b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.return-notice p {
+  margin: 6px 0 0;
+}
+.notify-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.notify-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink);
+  margin: 0;
+}
+
+/* 항목 이력 창 */
+.modal-wide {
+  max-width: 640px;
+}
+.ih-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ih-head .small {
+  margin: 4px 0 0;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--canvas-soft);
+  color: var(--ink);
+}
+.ih-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.ih-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ih-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ih-media {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--canvas-soft);
+}
+.ih-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ih-doc {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ih-events {
+  margin-top: 16px;
+}
+.ih-event .hr-time {
+  min-width: 92px;
+}
+.ih-event .hr-text {
+  font-size: 14px;
+}
+@media (max-width: 640px) {
+  .ih-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .history {
+    padding: 4px 16px 12px;
+  }
 }
 
 /* 확인 창 안쪽 */

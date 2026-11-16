@@ -27,6 +27,8 @@ public class AdminSubmissionService {
     private final CompanyRepository companyRepository;
     private final SubmissionItemRepository submissionItemRepository;
     private final FileStorageService fileStorageService;
+    private final SubmissionHistoryService historyService;
+    private final ReturnNoticeService returnNoticeService;
 
     public CompanySubmissionResponse getCompanySubmissions(Long companyId) {
         Company company = companyRepository.findById(companyId)
@@ -47,31 +49,43 @@ public class AdminSubmissionService {
         return new CompanySubmissionResponse(
                 company.getId(), company.getName(), company.getPhoneNumber(),
                 status.name(), status.getLabel(),
-                latest, itemResponses);
+                latest, itemResponses, returnNoticeService.status(companyId, items));
+    }
+
+    /** 검수 결과 - 처리한 항목과, 이 처리로 검수를 마쳐 반환 안내를 보냈다면 그 결과 (없으면 null) */
+    public record ReviewResult(SubmissionItemResponse item, ReturnNoticeService.Result notice) {
     }
 
     @Transactional
-    public SubmissionItemResponse approve(Long itemId) {
+    public ReviewResult approve(Long itemId) {
         SubmissionItem item = getItemOrThrow(itemId);
         item.approve();
-        return SubmissionItemResponse.from(item);
+        historyService.recordApproved(item);
+        return new ReviewResult(SubmissionItemResponse.from(item),
+                returnNoticeService.sendIfReviewFinished(item.getCompany()));
     }
 
     /**
-     * 반환 - 기존 제출본(원본 + PDF 사본) 삭제 후 반환 상태/사유 저장. 고객은 다시 제출해야 한다.
+     * 반환 - 반환 상태/사유를 저장한다. 고객은 이 항목만 다시 제출한다.
+     * 올린 파일은 지우지 않고 처리 이력에 보관한다 (재제출을 검수할 때 이전 반환본과 비교).
+     *
+     * @param notify 검수를 마치면 고객에게 반환 안내를 보낼지
      */
     @Transactional
-    public SubmissionItemResponse markReturned(Long itemId, String reason) {
+    public ReviewResult markReturned(Long itemId, String reason, boolean notify) {
         SubmissionItem item = getItemOrThrow(itemId);
-        String stored = item.getStoredFileName();
-        String pdf = item.getPdfFileName();
+        historyService.recordReturned(item, reason, notify); // 파일 정보가 지워지기 전에
         item.markReturned(reason);
-        fileStorageService.delete(stored);
-        // 원본이 PDF 였다면 같은 파일이라 한 번만 지운다
-        if (pdf != null && !pdf.equals(stored)) {
-            fileStorageService.delete(pdf);
-        }
-        return SubmissionItemResponse.from(item);
+        return new ReviewResult(SubmissionItemResponse.from(item),
+                returnNoticeService.sendIfReviewFinished(item.getCompany()));
+    }
+
+    /** 지금 반환된 항목을 모아 고객에게 안내를 (다시) 보낸다 */
+    @Transactional
+    public ReturnNoticeService.Result sendReturnNotice(Long companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> BusinessException.notFound("기업을 찾을 수 없습니다."));
+        return returnNoticeService.send(company);
     }
 
     /** 관리자 다운로드용 - 원본 또는 PDF 사본. */

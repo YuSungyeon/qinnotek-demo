@@ -6,6 +6,7 @@ import com.qinnotek.submission.domain.CompanyManager;
 import com.qinnotek.submission.domain.CompanyStatus;
 import com.qinnotek.submission.domain.Manager;
 import com.qinnotek.submission.domain.Requirement;
+import com.qinnotek.submission.domain.SubmissionEventType;
 import com.qinnotek.submission.domain.SubmissionItem;
 import com.qinnotek.submission.dto.admin.CompanyDetailResponse;
 import com.qinnotek.submission.dto.admin.CompanySummaryResponse;
@@ -40,6 +41,7 @@ public class CompanyService {
     private final FileStorageService fileStorageService;
     private final SmsService smsService;
     private final AppProperties appProperties;
+    private final SubmissionHistoryService historyService;
 
     public List<CompanySummaryResponse> search(String keyword) {
         List<Company> companies;
@@ -91,12 +93,16 @@ public class CompanyService {
         return getDetail(id);
     }
 
-    /** 기업 삭제 - 제출 항목·파일·담당자 지정도 함께 삭제 */
+    /** 기업 삭제 - 제출 항목·파일·처리 이력(보관한 반환본 포함)·담당자 지정도 함께 삭제 */
     @Transactional
     public void delete(Long id) {
         Company company = getOrThrow(id);
+        historyService.deleteCompanyHistory(id);
         List<SubmissionItem> items = submissionItemRepository.findByCompanyId(id);
-        items.forEach(i -> fileStorageService.delete(i.getStoredFileName()));
+        items.forEach(i -> {
+            fileStorageService.delete(i.getStoredFileName());
+            fileStorageService.delete(i.getPdfFileName());
+        });
         submissionItemRepository.deleteAll(items);
         companyManagerRepository.deleteAll(companyManagerRepository.findByCompanyId(id));
         companyRepository.delete(company);
@@ -143,6 +149,8 @@ public class CompanyService {
         } while (companyRepository.findByAccessToken(token).isPresent());
         LocalDateTime expiresAt = validDays == null ? null : LocalDateTime.now().plusDays(validDays);
         company.issueLink(token, expiresAt);
+        historyService.recordLink(id, SubmissionEventType.LINK_ISSUED, null,
+                validDays == null ? "기한 없음" : validDays + "일");
         return getDetail(id);
     }
 
@@ -150,6 +158,7 @@ public class CompanyService {
     @Transactional
     public CompanyDetailResponse revokeLink(Long id) {
         getOrThrow(id).revokeLink();
+        historyService.recordLink(id, SubmissionEventType.LINK_REVOKED, null, null);
         return getDetail(id);
     }
 
@@ -157,18 +166,26 @@ public class CompanyService {
      * 현재 제출 링크를 문자로 보낸다. 주소는 서버가 설정값(app.public-url)으로 만든다 -
      * 요청에서 받은 주소를 보내면 회사 발신번호로 아무 사이트 주소나 보낼 수 있게 된다.
      */
+    @Transactional
     public void sendLinkSms(Long id, String to) {
         Company company = getOrThrow(id);
         String token = company.getAccessToken();
         if (token == null || company.isLinkExpired(LocalDateTime.now())) {
             throw BusinessException.badRequest("사용 중인 링크가 없습니다. 링크를 먼저 만들어주세요.");
         }
-        String url = appProperties.getPublicUrl().replaceAll("/+$", "") + "/s/" + token;
+        String url = appProperties.linkUrl(token);
         String digits = to == null ? "" : to.replaceAll("\\D", "");
         if (digits.length() < 10 || digits.length() > 11) {
             throw BusinessException.badRequest("받는 번호를 확인해주세요.");
         }
         smsService.sendLink(digits, company.getName(), url);
+        historyService.recordLink(id, SubmissionEventType.LINK_SMS_SENT, digits, null);
+    }
+
+    private void deleteUnlessInHistory(String fileName) {
+        if (fileName != null && !historyService.isReferenced(fileName)) {
+            fileStorageService.delete(fileName);
+        }
     }
 
     @Transactional
@@ -203,7 +220,9 @@ public class CompanyService {
         // 삭제 대상: 기존에 있으나 이번에 선택되지 않은 것
         for (SubmissionItem item : existing) {
             if (!targetIds.contains(item.getRequirement().getId())) {
-                fileStorageService.delete(item.getStoredFileName());
+                // 제출한 적 있는 파일은 처리 이력이 보관하므로 남긴다 (기업 삭제 때 함께 지운다)
+                deleteUnlessInHistory(item.getStoredFileName());
+                deleteUnlessInHistory(item.getPdfFileName());
                 submissionItemRepository.delete(item);
             }
         }

@@ -57,7 +57,7 @@ class PartialSubmitTest {
 
         // 담당자가 B 통과, C 반환 → 다시 열면 반환된 C 가 먼저, 이어서 아직 안 낸 A
         adminSubmissionService.approve(b.getId());
-        adminSubmissionService.markReturned(c.getId(), "다시 촬영해 주세요");
+        adminSubmissionService.markReturned(c.getId(), "다시 촬영해 주세요", true);
         CustomerStatusResponse reopened = customerService.open(token);
         assertThat(reopened.state()).isEqualTo("INITIAL");
         assertThat(reopened.items()).extracting(CustomerItemResponse::itemId).containsExactly(c.getId(), a.getId());

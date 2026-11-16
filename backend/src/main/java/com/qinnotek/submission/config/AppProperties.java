@@ -21,6 +21,11 @@ public class AppProperties {
      */
     private String publicUrl = "http://localhost:5173";
 
+    /** 고객 제출 링크 주소 (문자로 보내는 링크는 항상 이걸로 만든다) */
+    public String linkUrl(String token) {
+        return publicUrl.replaceAll("/+$", "") + "/s/" + token;
+    }
+
     private final Upload upload = new Upload();
     private final Cors cors = new Cors();
     private final Sms sms = new Sms();

@@ -20,6 +20,7 @@
 | 올린 파일 종류 | `ContentKind` (`PHOTO`/`DOCUMENT`) | 컬럼 `content_kind` | 제출 항목에 실제로 들어온 파일이 사진인지 문서인지 |
 | 임시 문서 | `StagedDocument` | `staged_document` | 분류를 위해 먼저 올려둔 문서. 전송하면 제출 항목에 확정된다 |
 | 제출 링크 | `Company.accessToken` | 컬럼 `access_token` | 고객이 접속하는 `/s/{토큰}` |
+| 처리 이력 | `SubmissionEvent` | `submission_event` | 제출·통과·반환(반환본 보관)·반환 안내·링크 발급 기록. 쌓기만 한다 |
 | 제출 자료 검수 | `AdminSubmissionService` | — | 통과 / 반환(사유 필수) |
 
 ※ `photo_requirement` 는 사진만 받던 시절의 테이블명이다. 바꾸려면 Flyway 마이그레이션
@@ -93,7 +94,10 @@ npm run dev
 
 주요 규칙:
 - 항목당 파일 1개, 항상 최신 제출본만 유지(UUID 저장, 원본/경로/일시 DB 기록)
-- 반환 시 반환 사유 필수, 기존 파일 삭제, 고객은 반환 항목만 재제출
+- 반환 시 반환 사유 필수, 올린 파일은 지우지 않고 처리 이력에 보관(기업 삭제 때 함께 삭제), 고객은 반환 항목만 재제출
+- 반환 안내: 그 기업의 검수 대기가 0이 되는 순간 반환 항목을 모아 고객 연락처로 문자 1통(반환 창에서 끌 수 있음).
+  연락처·링크가 없어 못 보내면 관리자 화면에 남기고 다시 보낼 수 있다
+- 처리 이력: 제출(차수)·통과·반환·반환 안내·링크 발급을 기업별로 남긴다 (`submission_event`)
 - 부분 제출: 일부만 채우고 전송하면 먼저 보낼지 묻고(기본은 빈 항목 채우기), 채운 항목만 검수 대기로 넘긴다.
   낼 항목(미제출·반환)이 남아 있으면 검수 중이어도 고객 화면을 잠그지 않는다
 - 제출할 때마다 관리자에게 알림 문자 발송 — 이번에 낸 건수 포함(`SmsService` — Solapi, 관리자 설정에서 켜고 끔)
@@ -129,5 +133,7 @@ npm run dev
 | 관리자 | GET/POST/PUT/DELETE | `/api/admin/requirements` | 요청 자료(마스터) 관리 |
 | 관리자 | GET | `/api/admin/companies/{id}/submissions` | 제출 자료 조회 |
 | 관리자 | POST | `/api/admin/submissions/{itemId}/approve` | 통과 |
-| 관리자 | POST | `/api/admin/submissions/{itemId}/return` | 반환(사유 필수) |
+| 관리자 | POST | `/api/admin/submissions/{itemId}/return` | 반환(사유 필수, `notifyCustomer`) — 검수를 마치면 반환 안내 결과(`notice`)를 함께 응답 |
+| 관리자 | GET | `/api/admin/companies/{id}/history` | 처리 이력 (최신 먼저) |
+| 관리자 | POST | `/api/admin/companies/{id}/return-notice` | 반환 안내 (다시) 보내기 |
 | 공통 | GET | `/api/files/{fileName}` | 업로드 파일 제공 |

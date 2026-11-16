@@ -30,6 +30,7 @@ public class CustomerService {
     private final SubmissionItemRepository submissionItemRepository;
     private final FileStorageService fileStorageService;
     private final SmsService smsService;
+    private final SubmissionHistoryService historyService;
 
     /**
      * 링크 토큰으로 기업을 확정한다. 없는 토큰은 404, 기간이 지난 토큰은 410.
@@ -153,6 +154,7 @@ public class CustomerService {
         }
 
         targets.forEach(SubmissionItem::submit);
+        historyService.recordSubmitted(targets);
         smsService.notifyManagersOnSubmission(company.getId(), company.getName(), targets.size());
 
         return buildStatus(company, items);

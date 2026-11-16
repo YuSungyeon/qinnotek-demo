@@ -119,10 +119,18 @@ export const adminApi = {
   approve(itemId) {
     return client.post(`/api/admin/submissions/${itemId}/approve`).then((r) => r.data)
   },
-  markReturned(itemId, reason) {
+  // 통과·반환 응답: { item, notice } - 이 처리로 검수를 마쳐 반환 안내를 보냈으면 notice 에 결과
+  markReturned(itemId, reason, notifyCustomer = true) {
     return client
-      .post(`/api/admin/submissions/${itemId}/return`, { reason })
+      .post(`/api/admin/submissions/${itemId}/return`, { reason, notifyCustomer })
       .then((r) => r.data)
+  },
+  getHistory(companyId) {
+    return client.get(`/api/admin/companies/${companyId}/history`).then((r) => r.data)
+  },
+  // 지금 반환된 항목을 모아 고객에게 안내 문자를 (다시) 보낸다
+  sendReturnNotice(companyId) {
+    return client.post(`/api/admin/companies/${companyId}/return-notice`).then((r) => r.data)
   },
   updateItemNote(itemId, note) {
     return client
